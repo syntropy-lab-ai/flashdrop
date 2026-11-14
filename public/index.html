@@ -411,17 +411,56 @@
 </div>
 
 <script type="module">
+  // ====== Web Audio API для звуковых уведомлений ======
+  let audioContext = null;
+
+  function ensureAudioContext() {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+  }
+
+  function playNotificationSound(type) {
+    ensureAudioContext();
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+
+    const now = audioContext.currentTime;
+
+    if (type === 'incoming') {
+      // Мягкий, приятный "дзынь" (как в современных мессенджерах)
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now); // Нота Ля (A5)
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (type === 'outgoing') {
+      // Короткий тихий "клик" отправки
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(600, now);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    }
+  }
+
   // ====== Web Crypto API ======
   const subtle = window.crypto.subtle;
 
-  // ИСПРАВЛЕНО: URL-safe base64 (заменяем + / = на безопасные символы)
   function toUrlSafeBase64(base64) {
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
   function fromUrlSafeBase64(urlSafe) {
     let base64 = urlSafe.replace(/-/g, '+').replace(/_/g, '/');
-    // Добавляем padding обратно
     while (base64.length % 4 !== 0) {
       base64 += '=';
     }
@@ -540,6 +579,10 @@
       socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: encrypted });
       input.value = '';
       socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
+      
+      // ЗВУК: Короткий клик при отправке своего сообщения
+      playNotificationSound('outgoing');
+      
     } catch (err) {
       showToast('Ошибка шифрования: ' + err.message, 'error');
       console.error('Ошибка шифрования:', err);
@@ -566,7 +609,6 @@
       document.getElementById('room-link').textContent = url;
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       
-      // Обновляем URL в адресной строке
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
       
       showScreen('room-created');
@@ -591,6 +633,11 @@
       try {
         const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
         addMessage(data.nick, decrypted, data.userId === socket.id, data.timestamp);
+        
+        // ЗВУК: Мягкий "дзынь" только если сообщение от ДРУГОГО пользователя
+        if (data.userId !== socket.id) {
+          playNotificationSound('incoming');
+        }
       } catch (err) {
         console.error('Ошибка расшифровки:', err);
         showToast('Не удалось расшифровать сообщение', 'error');
@@ -621,6 +668,7 @@
 
   // ====== Обработчики событий ======
   document.getElementById('create-btn').addEventListener('click', async () => {
+    ensureAudioContext(); // Активируем звук при первом взаимодействии
     const nick = document.getElementById('nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
 
@@ -634,6 +682,7 @@
   });
 
   document.getElementById('join-btn').addEventListener('click', async () => {
+    ensureAudioContext();
     const link = document.getElementById('join-link-input').value.trim();
     if (!link) { showToast('Вставьте ссылку комнаты', 'error'); return; }
 
@@ -659,6 +708,7 @@
   });
 
   document.getElementById('join-room-btn').addEventListener('click', () => {
+    ensureAudioContext();
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
 
@@ -741,7 +791,6 @@
   });
 
   document.getElementById('new-room-btn').addEventListener('click', () => {
-    // Полностью сбрасываем состояние
     if (socket) {
       socket.disconnect();
       socket = null;
@@ -752,11 +801,9 @@
     isCreator = false;
     window.encryptionKeyBase64 = null;
     
-    // Переходим на чистый URL и перезагружаем
     window.location.href = window.location.pathname;
   });
 
-  // Проверка URL при загрузке
   window.addEventListener('load', () => {
     const hash = window.location.hash.substring(1);
     if (hash) {
