@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FlashDrop — Анонимный чат</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/socket.io/socket.io.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --card: #111827;
+    --card-border: #1e293b;
+    --accent: #00d4ff;
+    --text: #e5e7eb;
+    --muted: #6b7280;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --success: #10b981;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .bg-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(59, 130, 246, 0.15), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(0, 212, 255, 0.08), transparent 40%);
+  }
+
+  .bg-animation::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    animation: bg-pulse 8s ease-in-out infinite;
+  }
+
+  @keyframes bg-pulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  .content-wrapper { position: relative; z-index: 1; }
+  .mono { font-family: 'Fira Code', monospace; }
+
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in { animation: fade-in-up 0.6s ease-out forwards; }
+  .delay-1 { animation-delay: 0.1s; opacity: 0; }
+  .delay-2 { animation-delay: 0.2s; opacity: 0; }
+  .delay-3 { animation-delay: 0.3s; opacity: 0; }
+
+  .glow-btn {
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.35), 0 0 30px rgba(0, 212, 255, 0.15);
+    transition: all 0.25s ease;
+  }
+  .glow-btn:hover {
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.6), 0 0 50px rgba(0, 212, 255, 0.3);
+    transform: translateY(-1px);
+  }
+  .glow-btn:active { transform: translateY(0); }
+
+  .glow-btn-secondary {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+    transition: all 0.25s ease;
+  }
+  .glow-btn-secondary:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.35), 0 0 30px rgba(0, 212, 255, 0.15); }
+    50% { box-shadow: 0 0 25px rgba(0, 212, 255, 0.6), 0 0 50px rgba(0, 212, 255, 0.3); }
+  }
+  .pulse { animation: pulse-glow 2.5s ease-in-out infinite; }
+
+  @keyframes lightning-bounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-3px) rotate(-5deg); }
+    75% { transform: translateY(3px) rotate(5deg); }
+  }
+  .lightning-icon { animation: lightning-bounce 3s ease-in-out infinite; }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .msg-in { animation: msg-in 0.3s ease-out forwards; }
+
+  @keyframes voice-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  }
+  .voice-recording { animation: voice-pulse 1.5s ease-in-out infinite; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+  input, textarea { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+  input:focus, textarea:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+    outline: none;
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .copied-flash { animation: flash-border 0.6s ease; }
+  @keyframes flash-border {
+    0% { border-color: var(--card-border); }
+    50% { border-color: var(--success); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+    100% { border-color: var(--card-border); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-animation"></div>
+
+<!-- ЭКРАН 1: LANDING -->
+<div id="screen-landing" class="screen active min-h-screen flex items-center justify-center px-4 py-10">
+  <div class="content-wrapper w-full max-w-md">
+    <div class="text-center mb-8 animate-in">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 mb-4 shadow-lg lightning-icon" style="box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">FlashDrop</h1>
+      <p class="text-sm text-gray-400">Анонимный эфемерный чат без логов</p>
+    </div>
+
+    <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 backdrop-blur-sm animate-in delay-1">
+      <label class="block text-sm font-medium text-gray-300 mb-2">Ваш никнейм</label>
+      <input id="nick-input" type="text" placeholder="Например: Виктор"
+             class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 mb-5"/>
+
+      <button id="create-btn" class="glow-btn pulse w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        Создать комнату
+      </button>
+    </div>
+
+    <div class="mt-6 text-center animate-in delay-2">
+      <p class="text-xs text-gray-500 mb-3">— или —</p>
+      <label class="block text-sm font-medium text-gray-400 mb-2">Присоединиться по ссылке</label>
+      <input id="join-link-input" type="text" placeholder="Вставьте ссылку комнаты..."
+             class="w-full bg-gray-900/60 border border-gray-800 rounded-lg px-4 py-3 text-white placeholder-gray-500 mb-3"/>
+      <button id="join-btn" class="glow-btn-secondary w-full bg-blue-600/20 border border-blue-500/40 text-blue-300 font-medium py-2.5 rounded-lg hover:bg-blue-600/30 transition">
+        Войти
+      </button>
+    </div>
+
+    <p class="text-center text-xs text-gray-600 mt-6 animate-in delay-3">
+      🔒 Сквозное шифрование · Без логов · Без регистрации
+    </p>
+  </div>
+</div>
+
+<!-- ЭКРАН 2: КОМНАТА СОЗДАНА -->
+<div id="screen-room-created" class="screen min-h-screen flex flex-col">
+  <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10 animate-in">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center lightning-icon">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <span class="font-semibold">FlashDrop</span>
+    </div>
+    <button id="end-room-btn" class="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+      Завершить
+    </button>
+  </header>
+
+  <main class="flex-1 px-4 py-6 max-w-2xl mx-auto w-full">
+    <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 mb-5 animate-in">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">🔐</span>
+        <h2 class="font-semibold text-white">Комната создана</h2>
+      </div>
+      <p class="text-sm text-gray-400 mb-4">Скопируйте ссылку и отправьте собеседникам:</p>
+
+      <div id="link-box" class="mono text-xs bg-gray-950 border border-gray-700 rounded-lg p-3 break-all text-cyan-300 flex items-start justify-between gap-2">
+        <span id="room-link"></span>
+        <button id="copy-btn" class="flex-shrink-0 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <span id="copy-text">Копировать</span>
+        </button>
+      </div>
+
+      <div class="mt-4 flex items-start gap-2 text-xs">
+        <span class="text-amber-500">⚠️</span>
+        <p class="text-amber-400/90">Когда вы закроете вкладку — комната исчезнет навсегда вместе со всей перепиской.</p>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1 animate-in delay-1">
+      <span>🔒 Зашифровано · <span id="user-count">1</span> участник</span>
+      <span id="room-id-display" class="mono"></span>
+    </div>
+
+    <div id="chat-area" class="space-y-3 mb-4 min-h-[200px]"></div>
+
+    <div class="sticky bottom-4 bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-3 flex gap-2 animate-in delay-2">
+      <input id="msg-input" type="text" placeholder="Написать сообщение..."
+             class="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm"/>
+      <button id="voice-btn" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm transition" title="Голосовое сообщение">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+        </svg>
+      </button>
+      <button id="send-btn" class="glow-btn bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+<!-- ЭКРАН 3: ПРИСОЕДИНЕНИЕ -->
+<div id="screen-join" class="screen min-h-screen flex items-center justify-center px-4 py-10">
+  <div class="content-wrapper w-full max-w-md">
+    <div class="text-center mb-6 animate-in">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 mb-4 lightning-icon" style="box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">FlashDrop</h1>
+      <p class="text-sm text-gray-400">Вы присоединяетесь к комнате <span id="join-room-id" class="mono text-cyan-300"></span></p>
+    </div>
+
+    <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 backdrop-blur-sm animate-in delay-1">
+      <label class="block text-sm font-medium text-gray-300 mb-2">Ваш никнейм</label>
+      <input id="join-nick-input" type="text" placeholder="Например: Алиса"
+             class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 mb-5"/>
+
+      <button id="join-room-btn" class="glow-btn w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+        Войти в комнату
+      </button>
+    </div>
+
+    <div class="mt-5 bg-gray-900/40 border border-gray-800 rounded-xl p-4 flex items-start gap-3 animate-in delay-2">
+      <div class="text-lg">🔒</div>
+      <div>
+        <p class="text-sm text-gray-300 font-medium mb-1">Сквозное шифрование</p>
+        <p class="text-xs text-gray-500">Все сообщения шифруются в вашем браузере. Сервер не видит содержимое переписки.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ЭКРАН 4: ЧАТ -->
+<div id="screen-chat" class="screen min-h-screen flex flex-col">
+  <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10 animate-in">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center lightning-icon">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="font-semibold text-sm">FlashDrop</div>
+        <div id="chat-header-info" class="text-xs text-gray-500 mono"></div>
+      </div>
+    </div>
+    <button id="end-room-btn-2" class="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+      Завершить
+    </button>
+  </header>
+
+  <main class="flex-1 px-4 py-4 max-w-2xl mx-auto w-full flex flex-col">
+    <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1 animate-in">
+      <span class="flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+        Зашифровано
+      </span>
+      <span id="chat-room-id" class="mono"></span>
+    </div>
+
+    <div id="chat-area-2" class="flex-1 space-y-3 mb-4 overflow-y-auto pb-2"></div>
+
+    <div id="typing-indicator" class="hidden text-xs text-gray-500 mb-2 px-1 flex items-center gap-1.5">
+      <span id="typing-text">Кто-то печатает</span>
+      <span class="flex gap-0.5">
+        <span class="dot-1">.</span>
+        <span class="dot-2">.</span>
+        <span class="dot-3">.</span>
+      </span>
+    </div>
+
+    <div class="sticky bottom-4 bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-3 flex gap-2 animate-in delay-1">
+      <input id="msg-input-2" type="text" placeholder="Написать сообщение..."
+             class="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm"/>
+      <button id="voice-btn-2" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm transition" title="Голосовое сообщение">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+        </svg>
+      </button>
+      <button id="send-btn-2" class="glow-btn bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+<!-- МОДАЛКА -->
+<div id="modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full animate-in">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <h3 class="font-semibold text-white">Завершить комнату?</h3>
+    </div>
+    <p class="text-sm text-gray-400 mb-5">Вся переписка будет удалена безвозвратно.</p>
+    <div class="flex gap-2">
+      <button id="cancel-end-btn" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2.5 rounded-lg transition text-sm font-medium">Отмена</button>
+      <button id="confirm-end-btn" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-lg transition text-sm font-medium">Да, завершить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ЭКРАН ЗАВЕРШЕНИЯ -->
+<div id="screen-ended" class="screen min-h-screen flex items-center justify-center px-4">
+  <div class="text-center animate-in">
+    <div class="text-5xl mb-4">👋</div>
+    <h1 class="text-2xl font-bold mb-2 text-white">Комната закрыта</h1>
+    <p class="text-gray-400 mb-6">Вся переписка удалена безвозвратно.</p>
+    <button id="new-room-btn" class="glow-btn bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-2.5 rounded-lg font-medium">Создать новую</button>
+  </div>
+</div>
+
+<script type="module">
+  // ====== Web Crypto API для шифрования ======
+  const crypto = window.crypto.subtle;
+
+  // Генерация ключа AES-GCM
+  async function generateKey() {
+    return await crypto.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  // Экспорт ключа в формат для URL
+  async function exportKey(key) {
+    const exported = await crypto.exportKey('raw', key);
+    return btoa(String.fromCharCode(...new Uint8Array(exported)));
+  }
+
+  // Импорт ключа из URL
+  async function importKey(keyBase64) {
+    const keyData = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+    return await crypto.importKey(
+      'raw',
+      keyData,
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  // Шифрование сообщения
+  async function encryptMessage(key, message) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      data
+    );
+    // Возвращаем iv + encrypted в base64
+    const combined = new Uint8Array(iv.length + encrypted.length);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return btoa(String.fromCharCode(...combined));
+  }
+
+  // Расшифровка сообщения
+  async function decryptMessage(key, encryptedBase64) {
+    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    const decrypted = await crypto.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      data
+    );
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  }
+
+  // ====== Состояние приложения ======
+  let socket = null;
+  let currentRoomId = null;
+  let encryptionKey = null;
+  let myNick = '';
+  let isCreator = false;
+  let typingTimeout = null;
+
+  // ====== Переключение экранов ======
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ====== Инициализация Socket.io ======
+  function initSocket() {
+    socket = io();
+
+    socket.on('roomCreated', (data) => {
+      currentRoomId = data.roomId;
+      const url = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
+      document.getElementById('room-link').textContent = url;
+      document.getElementById('room-id-display').textContent = currentRoomId;
+      showScreen('room-created');
+    });
+
+    socket.on('userJoined', (data) => {
+      document.getElementById('user-count').textContent = data.userCount;
+      addSystemMessage(`👤 ${data.nick} присоединился к комнате`);
+    });
+
+    socket.on('userLeft', (data) => {
+      document.getElementById('user-count').textContent = data.userCount;
+      addSystemMessage(`👋 ${data.nick} покинул комнату`);
+    });
+
+    socket.on('message', async (data) => {
+      try {
+        const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
+        addMessage(data.nick, decrypted, data.userId === socket.id, data.timestamp);
+      } catch (err) {
+        console.error('Ошибка расшифровки:', err);
+      }
+    });
+
+    socket.on('userTyping', (data) => {
+      document.getElementById('typing-text').textContent = `${data.nick} печатает`;
+      document.getElementById('typing-indicator').classList.remove('hidden');
+    });
+
+    socket.on('userStoppedTyping', () => {
+      document.getElementById('typing-indicator').classList.add('hidden');
+    });
+
+    socket.on('roomEnded', () => {
+      showScreen('ended');
+    });
+
+    socket.on('error', (data) => {
+      alert(data.message);
+    });
+  }
+
+  // ====== Добавление сообщений ======
+  function addMessage(nick, text, isSelf, timestamp) {
+    const area = document.getElementById(isCreator ? 'chat-area' : 'chat-area-2');
+    const msg = document.createElement('div');
+    msg.className = 'msg-in bg-gray-900/60 border border-gray-800 rounded-xl p-3';
+    const time = new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const nickColor = isSelf ? 'text-cyan-300' : 'text-gray-200';
+    msg.innerHTML = `
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-semibold ${nickColor}">${escapeHtml(nick)}</span>
+        <span class="text-xs text-gray-500 mono">${time}</span>
+      </div>
+      <p class="text-sm text-gray-200 break-words">${escapeHtml(text)}</p>
+    `;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+  }
+
+  function addSystemMessage(text) {
+    const area = document.getElementById(isCreator ? 'chat-area' : 'chat-area-2');
+    const msg = document.createElement('div');
+    msg.className = 'msg-in text-center text-xs text-gray-500 py-2';
+    msg.textContent = text;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  // ====== Отправка сообщения ======
+  async function sendMessage() {
+    const inputId = isCreator ? 'msg-input' : 'msg-input-2';
+    const input = document.getElementById(inputId);
+    const text = input.value.trim();
+    if (!text) return;
+
+    try {
+      const encrypted = await encryptMessage(encryptionKey, text);
+      socket.emit('sendMessage', {
+        roomId: currentRoomId,
+        encryptedMessage: encrypted
+      });
+      input.value = '';
+    } catch (err) {
+      console.error('Ошибка шифрования:', err);
+    }
+  }
+
+  // ====== Индикатор набора ======
+  function handleTyping() {
+    socket.emit('typing', { roomId: currentRoomId, nick: myNick });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
+    }, 2000);
+  }
+
+  // ====== Копирование ссылки ======
+  document.getElementById('copy-btn').addEventListener('click', async () => {
+    const link = document.getElementById('room-link').textContent;
+    try {
+      await navigator.clipboard.writeText(link);
+      const txt = document.getElementById('copy-text');
+      const btn = document.getElementById('copy-btn');
+      txt.textContent = '✓ Скопировано';
+      btn.classList.add('copied-flash');
+      setTimeout(() => {
+        txt.textContent = 'Копировать';
+        btn.classList.remove('copied-flash');
+      }, 2000);
+    } catch (err) {
+      console.error('Ошибка копирования:', err);
+    }
+  });
+
+  // ====== Создание комнаты ======
+  document.getElementById('create-btn').addEventListener('click', async () => {
+    const nick = document.getElementById('nick-input').value.trim();
+    if (!nick) {
+      alert('Введите никнейм');
+      return;
+    }
+
+    myNick = nick;
+    isCreator = true;
+
+    // Генерируем ключ шифрования
+    encryptionKey = await generateKey();
+    window.encryptionKeyBase64 = await exportKey(encryptionKey);
+
+    initSocket();
+    socket.emit('createRoom', { nick });
+  });
+
+  // ====== Присоединение по ссылке ======
+  document.getElementById('join-btn').addEventListener('click', () => {
+    const link = document.getElementById('join-link-input').value.trim();
+    if (!link) {
+      alert('Вставьте ссылку комнаты');
+      return;
+    }
+
+    try {
+      const url = new URL(link);
+      const hash = url.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const roomId = params.get('room');
+      const keyBase64 = params.get('key');
+
+      if (!roomId || !keyBase64) {
+        alert('Неверная ссылка');
+        return;
+      }
+
+      currentRoomId = roomId;
+      window.encryptionKeyBase64 = keyBase64;
+      encryptionKey = await importKey(keyBase64);
+
+      document.getElementById('join-room-id').textContent = roomId;
+      showScreen('join');
+    } catch (err) {
+      alert('Неверная ссылка');
+    }
+  });
+
+  // ====== Вход в комнату ======
+  document.getElementById('join-room-btn').addEventListener('click', () => {
+    const nick = document.getElementById('join-nick-input').value.trim();
+    if (!nick) {
+      alert('Введите никнейм');
+      return;
+    }
+
+    myNick = nick;
+    isCreator = false;
+
+    initSocket();
+    socket.emit('joinRoom', { roomId: currentRoomId, nick });
+
+    document.getElementById('chat-room-id').textContent = currentRoomId;
+    document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
+    showScreen('chat');
+  });
+
+  // ====== Отправка сообщений (оба экрана) ======
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
+  document.getElementById('send-btn-2').addEventListener('click', sendMessage);
+
+  document.getElementById('msg-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+    else handleTyping();
+  });
+
+  document.getElementById('msg-input-2').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+    else handleTyping();
+  });
+
+  // ====== Завершение комнаты ======
+  function confirmEnd() {
+    document.getElementById('modal').classList.remove('hidden');
+  }
+
+  document.getElementById('end-room-btn').addEventListener('click', confirmEnd);
+  document.getElementById('end-room-btn-2').addEventListener('click', confirmEnd);
+
+  document.getElementById('cancel-end-btn').addEventListener('click', () => {
+    document.getElementById('modal').classList.add('hidden');
+  });
+
+  document.getElementById('confirm-end-btn').addEventListener('click', () => {
+    socket.emit('endRoom', { roomId: currentRoomId });
+    document.getElementById('modal').classList.add('hidden');
+  });
+
+  // ====== Новая комната ======
+  document.getElementById('new-room-btn').addEventListener('click', () => {
+    location.reload();
+  });
+
+  // ====== Проверка URL при загрузке ======
+  window.addEventListener('load', () => {
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      const roomId = params.get('room');
+      const keyBase64 = params.get('key');
+
+      if (roomId && keyBase64) {
+        currentRoomId = roomId;
+        window.encryptionKeyBase64 = keyBase64;
+        importKey(keyBase64).then(key => {
+          encryptionKey = key;
+          document.getElementById('join-room-id').textContent = roomId;
+          showScreen('join');
+        });
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
