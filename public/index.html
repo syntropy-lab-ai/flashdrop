@@ -2,27 +2,27 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>FlashDrop — Анонимный чат</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="/socket.io/socket.io.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0e1a;
-    --card: #111827;
-    --card-border: #1e293b;
+    --bg: #05050a;
+    --card: #0f111a;
+    --card-border: #1e2235;
     --accent: #00d4ff;
-    --text: #e5e7eb;
-    --muted: #6b7280;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --success: #10b981;
+    --accent-glow: rgba(0, 212, 255, 0.4);
+    --text: #f0f2f5;
+    --muted: #8b92a8;
+    --danger: #ff4757;
+    --success: #2ed573;
   }
 
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   body {
     margin: 0;
@@ -30,415 +30,459 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
   }
 
-  .bg-animation {
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Фоновые эффекты */
+  .bg-glow {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: -20%;
+    left: -10%;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+    filter: blur(80px);
     z-index: 0;
     pointer-events: none;
-    background:
-      radial-gradient(circle at 20% 10%, rgba(59, 130, 246, 0.15), transparent 40%),
-      radial-gradient(circle at 80% 90%, rgba(0, 212, 255, 0.08), transparent 40%);
+    animation: float 15s ease-in-out infinite;
+  }
+  .bg-glow-2 {
+    position: fixed;
+    bottom: -20%;
+    right: -10%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+    filter: blur(80px);
+    z-index: 0;
+    pointer-events: none;
+    animation: float 20s ease-in-out infinite reverse;
   }
 
-  .bg-animation::before {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background-image: 
-      radial-gradient(circle at 25% 25%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
-    animation: bg-pulse 8s ease-in-out infinite;
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(30px, -30px); }
   }
 
-  @keyframes bg-pulse {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.1); }
-  }
+  .content-layer { position: relative; z-index: 1; }
 
-  .content-wrapper { position: relative; z-index: 1; }
-  .mono { font-family: 'Fira Code', monospace; }
-
-  @keyframes fade-in-up {
+  /* Анимации */
+  @keyframes slide-up {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .delay-100 { animation-delay: 0.1s; opacity: 0; }
+  .delay-200 { animation-delay: 0.2s; opacity: 0; }
+  .delay-300 { animation-delay: 0.3s; opacity: 0; }
 
-  .animate-in { animation: fade-in-up 0.6s ease-out forwards; }
-  .delay-1 { animation-delay: 0.1s; opacity: 0; }
-  .delay-2 { animation-delay: 0.2s; opacity: 0; }
-  .delay-3 { animation-delay: 0.3s; opacity: 0; }
-
-  .glow-btn {
-    box-shadow: 0 0 15px rgba(0, 212, 255, 0.35), 0 0 30px rgba(0, 212, 255, 0.15);
-    transition: all 0.25s ease;
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 212, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
   }
-  .glow-btn:hover {
-    box-shadow: 0 0 25px rgba(0, 212, 255, 0.6), 0 0 50px rgba(0, 212, 255, 0.3);
-    transform: translateY(-1px);
+  .btn-primary {
+    background: linear-gradient(135deg, #0077ff 0%, #00d4ff 100%);
+    transition: all 0.3s ease;
   }
-  .glow-btn:active { transform: translateY(0); }
-
-  .glow-btn-secondary {
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
-    transition: all 0.25s ease;
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
   }
-  .glow-btn-secondary:hover { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+  .btn-primary:active { transform: translateY(0); }
 
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.35), 0 0 30px rgba(0, 212, 255, 0.15); }
-    50% { box-shadow: 0 0 25px rgba(0, 212, 255, 0.6), 0 0 50px rgba(0, 212, 255, 0.3); }
-  }
-  .pulse { animation: pulse-glow 2.5s ease-in-out infinite; }
-
-  @keyframes lightning-bounce {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    25% { transform: translateY(-3px) rotate(-5deg); }
-    75% { transform: translateY(3px) rotate(5deg); }
-  }
-  .lightning-icon { animation: lightning-bounce 3s ease-in-out infinite; }
-
-  @keyframes msg-in {
-    from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  /* Сообщения */
+  @keyframes msg-pop {
+    from { opacity: 0; transform: translateY(10px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
-  .msg-in { animation: msg-in 0.3s ease-out forwards; }
-
-  @keyframes voice-pulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-    50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  .message-bubble {
+    animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    max-width: 85%;
+    word-wrap: break-word;
   }
-  .voice-recording { animation: voice-pulse 1.5s ease-in-out infinite; }
+  .message-bubble.self {
+    background: linear-gradient(135deg, rgba(0, 119, 255, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    margin-left: auto;
+  }
+  .message-bubble.other {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    margin-right: auto;
+  }
 
-  ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  /* Скроллбар */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2d3348; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4a5168; }
 
-  input, textarea { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-  input:focus, textarea:focus {
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+  /* Поля ввода */
+  .input-field {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--card-border);
+    transition: all 0.2s ease;
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
     outline: none;
   }
 
+  /* Экраны */
   .screen { display: none; }
-  .screen.active { display: block; }
+  .screen.active { display: flex; }
 
-  .copied-flash { animation: flash-border 0.6s ease; }
-  @keyframes flash-border {
-    0% { border-color: var(--card-border); }
-    50% { border-color: var(--success); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
-    100% { border-color: var(--card-border); }
+  /* Тосты */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .toast {
+    background: rgba(15, 17, 26, 0.95);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(10px);
+    padding: 12px 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    animation: slide-in-right 0.3s ease forwards;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .toast.error { border-left: 3px solid var(--danger); }
+  .toast.success { border-left: 3px solid var(--success); }
+  
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fade-out {
+    to { opacity: 0; transform: translateX(100%); }
+  }
+
+  /* Индикатор набора */
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--muted);
+    border-radius: 50%;
+    display: inline-block;
+    animation: typing 1.4s infinite ease-in-out both;
+  }
+  .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes typing {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
   }
 </style>
 </head>
 <body>
 
-<div class="bg-animation"></div>
+<div class="bg-glow"></div>
+<div class="bg-glow-2"></div>
+<div class="toast-container" id="toast-container"></div>
 
-<!-- ЭКРАН 1: LANDING -->
-<div id="screen-landing" class="screen active min-h-screen flex items-center justify-center px-4 py-10">
-  <div class="content-wrapper w-full max-w-md">
-    <div class="text-center mb-8 animate-in">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 mb-4 shadow-lg lightning-icon" style="box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);">
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
-      </div>
-      <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">FlashDrop</h1>
-      <p class="text-sm text-gray-400">Анонимный эфемерный чат без логов</p>
-    </div>
+<div class="content-layer min-h-screen">
 
-    <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 backdrop-blur-sm animate-in delay-1">
-      <label class="block text-sm font-medium text-gray-300 mb-2">Ваш никнейм</label>
-      <input id="nick-input" type="text" placeholder="Например: Виктор"
-             class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 mb-5"/>
-
-      <button id="create-btn" class="glow-btn pulse w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
-        Создать комнату
-      </button>
-    </div>
-
-    <div class="mt-6 text-center animate-in delay-2">
-      <p class="text-xs text-gray-500 mb-3">— или —</p>
-      <label class="block text-sm font-medium text-gray-400 mb-2">Присоединиться по ссылке</label>
-      <input id="join-link-input" type="text" placeholder="Вставьте ссылку комнаты..."
-             class="w-full bg-gray-900/60 border border-gray-800 rounded-lg px-4 py-3 text-white placeholder-gray-500 mb-3"/>
-      <button id="join-btn" class="glow-btn-secondary w-full bg-blue-600/20 border border-blue-500/40 text-blue-300 font-medium py-2.5 rounded-lg hover:bg-blue-600/30 transition">
-        Войти
-      </button>
-    </div>
-
-    <p class="text-center text-xs text-gray-600 mt-6 animate-in delay-3">
-      🔒 Сквозное шифрование · Без логов · Без регистрации
-    </p>
-  </div>
-</div>
-
-<!-- ЭКРАН 2: КОМНАТА СОЗДАНА -->
-<div id="screen-room-created" class="screen min-h-screen flex flex-col">
-  <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10 animate-in">
-    <div class="flex items-center gap-2">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center lightning-icon">
-        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
-      </div>
-      <span class="font-semibold">FlashDrop</span>
-    </div>
-    <button id="end-room-btn" class="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-      </svg>
-      Завершить
-    </button>
-  </header>
-
-  <main class="flex-1 px-4 py-6 max-w-2xl mx-auto w-full">
-    <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 mb-5 animate-in">
-      <div class="flex items-center gap-2 mb-2">
-        <span class="text-lg">🔐</span>
-        <h2 class="font-semibold text-white">Комната создана</h2>
-      </div>
-      <p class="text-sm text-gray-400 mb-4">Скопируйте ссылку и отправьте собеседникам:</p>
-
-      <div id="link-box" class="mono text-xs bg-gray-950 border border-gray-700 rounded-lg p-3 break-all text-cyan-300 flex items-start justify-between gap-2">
-        <span id="room-link"></span>
-        <button id="copy-btn" class="flex-shrink-0 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+  <!-- ЭКРАН 1: ГЛАВНАЯ -->
+  <div id="screen-landing" class="screen active flex-col items-center justify-center px-4 py-10 min-h-screen">
+    <div class="w-full max-w-md animate-slide-up">
+      <div class="text-center mb-10">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-400 mb-6 shadow-2xl" style="box-shadow: 0 0 40px rgba(0, 212, 255, 0.3);">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
-          <span id="copy-text">Копировать</span>
+        </div>
+        <h1 class="text-5xl font-bold mb-3 bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent tracking-tight">FlashDrop</h1>
+        <p class="text-base text-[var(--muted)]">Анонимный эфемерный чат со сквозным шифрованием</p>
+      </div>
+
+      <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
+        <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
+        <input id="nick-input" type="text" placeholder="Например: Виктор" maxlength="20"
+               class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
+
+        <button id="create-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          Создать комнату
         </button>
       </div>
 
-      <div class="mt-4 flex items-start gap-2 text-xs">
-        <span class="text-amber-500">⚠️</span>
-        <p class="text-amber-400/90">Когда вы закроете вкладку — комната исчезнет навсегда вместе со всей перепиской.</p>
+      <div class="mt-8 text-center animate-slide-up delay-200">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="h-px bg-[var(--card-border)] flex-1"></div>
+          <span class="text-xs text-[var(--muted)] uppercase tracking-wider">или</span>
+          <div class="h-px bg-[var(--card-border)] flex-1"></div>
+        </div>
+        
+        <label class="block text-sm font-medium text-gray-400 mb-2 ml-1">Присоединиться по ссылке</label>
+        <input id="join-link-input" type="text" placeholder="Вставьте ссылку..."
+               class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-4 text-sm mono"/>
+        <button id="join-btn" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium py-3.5 rounded-xl transition text-base">
+          Войти в комнату
+        </button>
       </div>
-    </div>
 
-    <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1 animate-in delay-1">
-      <span>🔒 Зашифровано · <span id="user-count">1</span> участник</span>
-      <span id="room-id-display" class="mono"></span>
-    </div>
-
-    <div id="chat-area" class="space-y-3 mb-4 min-h-[200px]"></div>
-
-    <div class="sticky bottom-4 bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-3 flex gap-2 animate-in delay-2">
-      <input id="msg-input" type="text" placeholder="Написать сообщение..."
-             class="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm"/>
-      <button id="voice-btn" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm transition" title="Голосовое сообщение">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
-        </svg>
-      </button>
-      <button id="send-btn" class="glow-btn bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm font-medium">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-        </svg>
-      </button>
-    </div>
-  </main>
-</div>
-
-<!-- ЭКРАН 3: ПРИСОЕДИНЕНИЕ -->
-<div id="screen-join" class="screen min-h-screen flex items-center justify-center px-4 py-10">
-  <div class="content-wrapper w-full max-w-md">
-    <div class="text-center mb-6 animate-in">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 mb-4 lightning-icon" style="box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);">
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
-      </div>
-      <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">FlashDrop</h1>
-      <p class="text-sm text-gray-400">Вы присоединяетесь к комнате <span id="join-room-id" class="mono text-cyan-300"></span></p>
-    </div>
-
-    <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 backdrop-blur-sm animate-in delay-1">
-      <label class="block text-sm font-medium text-gray-300 mb-2">Ваш никнейм</label>
-      <input id="join-nick-input" type="text" placeholder="Например: Алиса"
-             class="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 mb-5"/>
-
-      <button id="join-room-btn" class="glow-btn w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-        </svg>
-        Войти в комнату
-      </button>
-    </div>
-
-    <div class="mt-5 bg-gray-900/40 border border-gray-800 rounded-xl p-4 flex items-start gap-3 animate-in delay-2">
-      <div class="text-lg">🔒</div>
-      <div>
-        <p class="text-sm text-gray-300 font-medium mb-1">Сквозное шифрование</p>
-        <p class="text-xs text-gray-500">Все сообщения шифруются в вашем браузере. Сервер не видит содержимое переписки.</p>
+      <div class="flex items-center justify-center gap-6 mt-10 text-xs text-[var(--muted)] animate-slide-up delay-300">
+        <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg> E2E Шифрование</span>
+        <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Без логов</span>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ЭКРАН 4: ЧАТ -->
-<div id="screen-chat" class="screen min-h-screen flex flex-col">
-  <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10 animate-in">
-    <div class="flex items-center gap-2">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center lightning-icon">
-        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+  <!-- ЭКРАН 2: КОМНАТА СОЗДАНА -->
+  <div id="screen-room-created" class="screen flex-col min-h-screen">
+    <header class="border-b border-[var(--card-border)] bg-[var(--bg)]/80 backdrop-blur-md px-4 py-4 flex items-center justify-between sticky top-0 z-20">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <span class="font-bold text-lg tracking-tight">FlashDrop</span>
+      </div>
+      <button id="end-room-btn-1" class="text-sm text-[var(--danger)] hover:text-red-400 transition flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Завершить
+      </button>
+    </header>
+
+    <main class="flex-1 px-4 py-6 max-w-2xl mx-auto w-full flex flex-col">
+      <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-5 mb-6 animate-slide-up">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-xl">🔐</span>
+          <h2 class="font-bold text-white text-lg">Комната создана</h2>
+        </div>
+        <p class="text-sm text-[var(--muted)] mb-4">Отправьте эту ссылку собеседникам. Ключ шифрования содержится в ссылке и никогда не попадает на сервер.</p>
+
+        <div class="bg-black/40 border border-[var(--card-border)] rounded-xl p-3 flex items-center gap-3 group hover:border-[var(--accent)]/50 transition">
+          <span id="room-link" class="mono text-xs text-cyan-300 flex-1 break-all select-all"></span>
+          <button id="copy-btn" class="flex-shrink-0 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg transition flex items-center gap-1.5 text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            <span id="copy-text">Копировать</span>
+          </button>
+        </div>
+
+        <div class="mt-4 flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+          <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <p class="text-xs text-amber-200/90 leading-relaxed">Когда создатель закроет вкладку, комната будет <b>безвозвратно удалена</b> из памяти сервера вместе со всей перепиской.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span>
+          Зашифровано · <span id="user-count-1" class="text-white font-medium">1</span> участник
+        </span>
+        <span id="room-id-display-1" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
+      </div>
+
+      <div id="chat-area-1" class="flex-1 space-y-3 mb-4 overflow-y-auto pr-1 min-h-[250px]"></div>
+
+      <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
+        <input id="msg-input-1" type="text" placeholder="Написать сообщение..." autocomplete="off"
+               class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
+        <button id="send-btn-1" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ЭКРАН 3: ПРИСОЕДИНЕНИЕ -->
+  <div id="screen-join" class="screen flex-col items-center justify-center px-4 py-10 min-h-screen">
+    <div class="w-full max-w-md animate-slide-up">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-400 mb-6 shadow-2xl" style="box-shadow: 0 0 40px rgba(0, 212, 255, 0.3);">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <h1 class="text-4xl font-bold mb-3 bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">Добро пожаловать</h1>
+        <p class="text-base text-[var(--muted)]">Вы присоединяетесь к комнате <span id="join-room-id" class="mono text-[var(--accent)] font-bold"></span></p>
+      </div>
+
+      <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
+        <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
+        <input id="join-nick-input" type="text" placeholder="Например: Алиса" maxlength="20"
+               class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
+
+        <button id="join-room-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+          Войти в комнату
+        </button>
+      </div>
+
+      <div class="mt-6 bg-[var(--card)]/50 border border-[var(--card-border)] rounded-2xl p-4 flex items-start gap-3 animate-slide-up delay-200">
+        <div class="w-10 h-10 rounded-full bg-[var(--success)]/10 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm text-white font-medium mb-1">Сквозное шифрование (E2EE)</p>
+          <p class="text-xs text-[var(--muted)] leading-relaxed">Сообщения шифруются алгоритмом AES-256-GCM прямо в вашем браузере. Сервер передаёт только зашифрованный набор байтов и не может прочитать переписку.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 4: ЧАТ -->
+  <div id="screen-chat" class="screen flex-col min-h-screen">
+    <header class="border-b border-[var(--card-border)] bg-[var(--bg)]/80 backdrop-blur-md px-4 py-4 flex items-center justify-between sticky top-0 z-20">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="font-bold text-base tracking-tight">FlashDrop</div>
+          <div id="chat-header-info" class="text-xs text-[var(--muted)] mono"></div>
+        </div>
+      </div>
+      <button id="end-room-btn-2" class="text-sm text-[var(--danger)] hover:text-red-400 transition flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Завершить
+      </button>
+    </header>
+
+    <main class="flex-1 px-4 py-4 max-w-2xl mx-auto w-full flex flex-col">
+      <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span>
+          Соединение защищено
+        </span>
+        <span id="chat-room-id" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
+      </div>
+
+      <div id="chat-area-2" class="flex-1 space-y-3 mb-2 overflow-y-auto pr-1"></div>
+
+      <div id="typing-indicator" class="hidden text-xs text-[var(--muted)] mb-2 px-1 h-5 flex items-center gap-1.5">
+        <span id="typing-text">Кто-то печатает</span>
+        <div class="flex gap-1 items-center h-3">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+
+      <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
+        <input id="msg-input-2" type="text" placeholder="Написать сообщение..." autocomplete="off"
+               class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
+        <button id="send-btn-2" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ЭКРАН 5: ЗАВЕРШЕНО -->
+  <div id="screen-ended" class="screen flex-col items-center justify-center px-4 min-h-screen">
+    <div class="text-center animate-slide-up max-w-sm">
+      <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-red-500/10 mb-6">
+        <svg class="w-12 h-12 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </div>
-      <div>
-        <div class="font-semibold text-sm">FlashDrop</div>
-        <div id="chat-header-info" class="text-xs text-gray-500 mono"></div>
-      </div>
-    </div>
-    <button id="end-room-btn-2" class="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-      </svg>
-      Завершить
-    </button>
-  </header>
-
-  <main class="flex-1 px-4 py-4 max-w-2xl mx-auto w-full flex flex-col">
-    <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1 animate-in">
-      <span class="flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-        Зашифровано
-      </span>
-      <span id="chat-room-id" class="mono"></span>
-    </div>
-
-    <div id="chat-area-2" class="flex-1 space-y-3 mb-4 overflow-y-auto pb-2"></div>
-
-    <div id="typing-indicator" class="hidden text-xs text-gray-500 mb-2 px-1 flex items-center gap-1.5">
-      <span id="typing-text">Кто-то печатает</span>
-      <span class="flex gap-0.5">
-        <span class="dot-1">.</span>
-        <span class="dot-2">.</span>
-        <span class="dot-3">.</span>
-      </span>
-    </div>
-
-    <div class="sticky bottom-4 bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-xl p-3 flex gap-2 animate-in delay-1">
-      <input id="msg-input-2" type="text" placeholder="Написать сообщение..."
-             class="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm"/>
-      <button id="voice-btn-2" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm transition" title="Голосовое сообщение">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+      <h1 class="text-3xl font-bold mb-3 text-white">Комната закрыта</h1>
+      <p class="text-[var(--muted)] mb-8 leading-relaxed">Создатель завершил сессию. Все сообщения и ключи шифрования были безвозвратно удалены из оперативной памяти сервера.</p>
+      <button id="new-room-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
-      </button>
-      <button id="send-btn-2" class="glow-btn bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-4 py-2.5 rounded-lg flex items-center gap-1 text-sm font-medium">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-        </svg>
+        Создать новую комнату
       </button>
     </div>
-  </main>
+  </div>
+
 </div>
 
-<!-- МОДАЛКА -->
-<div id="modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full animate-in">
+<!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
+<div id="modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-6 max-w-sm w-full animate-slide-up shadow-2xl">
     <div class="flex items-center gap-3 mb-4">
       <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
         </svg>
       </div>
-      <h3 class="font-semibold text-white">Завершить комнату?</h3>
+      <h3 class="font-bold text-white text-lg">Завершить комнату?</h3>
     </div>
-    <p class="text-sm text-gray-400 mb-5">Вся переписка будет удалена безвозвратно.</p>
-    <div class="flex gap-2">
-      <button id="cancel-end-btn" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2.5 rounded-lg transition text-sm font-medium">Отмена</button>
-      <button id="confirm-end-btn" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-lg transition text-sm font-medium">Да, завершить</button>
+    <p class="text-sm text-[var(--muted)] mb-6 leading-relaxed">Вся переписка будет удалена безвозвратно. Участники потеряют доступ к чату. Это действие нельзя отменить.</p>
+    <div class="flex gap-3">
+      <button id="cancel-end-btn" class="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl transition text-sm font-medium border border-white/10">Отмена</button>
+      <button id="confirm-end-btn" class="flex-1 bg-[var(--danger)] hover:bg-red-500 text-white py-3 rounded-xl transition text-sm font-medium shadow-lg shadow-red-500/20">Да, завершить</button>
     </div>
-  </div>
-</div>
-
-<!-- ЭКРАН ЗАВЕРШЕНИЯ -->
-<div id="screen-ended" class="screen min-h-screen flex items-center justify-center px-4">
-  <div class="text-center animate-in">
-    <div class="text-5xl mb-4">👋</div>
-    <h1 class="text-2xl font-bold mb-2 text-white">Комната закрыта</h1>
-    <p class="text-gray-400 mb-6">Вся переписка удалена безвозвратно.</p>
-    <button id="new-room-btn" class="glow-btn bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-2.5 rounded-lg font-medium">Создать новую</button>
   </div>
 </div>
 
 <script type="module">
-  // ====== Web Crypto API для шифрования ======
-  const crypto = window.crypto.subtle;
+  // ====== Web Crypto API ======
+  const cryptoApi = window.crypto.subtle;
 
-  // Генерация ключа AES-GCM
   async function generateKey() {
-    return await crypto.generateKey(
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt', 'decrypt']
-    );
+    return await cryptoApi.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
-  // Экспорт ключа в формат для URL
   async function exportKey(key) {
-    const exported = await crypto.exportKey('raw', key);
+    const exported = await cryptoApi.exportKey('raw', key);
     return btoa(String.fromCharCode(...new Uint8Array(exported)));
   }
 
-  // Импорт ключа из URL
   async function importKey(keyBase64) {
     const keyData = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
-    return await crypto.importKey(
-      'raw',
-      keyData,
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt', 'decrypt']
-    );
+    return await cryptoApi.importKey('raw', keyData, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
-  // Шифрование сообщения
   async function encryptMessage(key, message) {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await crypto.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      data
-    );
-    // Возвращаем iv + encrypted в base64
-    const combined = new Uint8Array(iv.length + encrypted.length);
+    const iv = cryptoApi.getRandomValues(new Uint8Array(12));
+    const encrypted = await cryptoApi.encrypt({ name: 'AES-GCM', iv }, key, data);
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
     combined.set(iv, 0);
     combined.set(new Uint8Array(encrypted), iv.length);
     return btoa(String.fromCharCode(...combined));
   }
 
-  // Расшифровка сообщения
   async function decryptMessage(key, encryptedBase64) {
     const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
     const iv = combined.slice(0, 12);
     const data = combined.slice(12);
-    const decrypted = await crypto.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      data
-    );
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
+    const decrypted = await cryptoApi.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return new TextDecoder().decode(decrypted);
   }
 
-  // ====== Состояние приложения ======
+  // ====== Состояние ======
   let socket = null;
   let currentRoomId = null;
   let encryptionKey = null;
@@ -446,14 +490,90 @@
   let isCreator = false;
   let typingTimeout = null;
 
-  // ====== Переключение экранов ======
+  // ====== Утилиты UI ======
+  function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icon = type === 'success' 
+      ? '<svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
+      : '<svg class="w-5 h-5 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+    toast.innerHTML = `${icon}<span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'fade-out 0.3s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + name).classList.add('active');
     window.scrollTo(0, 0);
   }
 
-  // ====== Инициализация Socket.io ======
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  // ====== Чат ======
+  function addMessage(nick, text, isSelf, timestamp) {
+    const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
+    const area = document.getElementById(areaId);
+    const msg = document.createElement('div');
+    msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
+    const time = new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const nickColor = isSelf ? 'text-cyan-300' : 'text-blue-300';
+    
+    msg.innerHTML = `
+      <div class="flex items-center justify-between mb-1.5 gap-4">
+        <span class="text-xs font-bold ${nickColor}">${escapeHtml(nick)}</span>
+        <span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span>
+      </div>
+      <p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>
+    `;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+  }
+
+  function addSystemMessage(text) {
+    const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
+    const area = document.getElementById(areaId);
+    const msg = document.createElement('div');
+    msg.className = 'text-center text-xs text-[var(--muted)] py-2 animate-slide-up';
+    msg.innerHTML = `<span class="bg-white/5 px-3 py-1 rounded-full">${text}</span>`;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const inputId = isCreator ? 'msg-input-1' : 'msg-input-2';
+    const input = document.getElementById(inputId);
+    const text = input.value.trim();
+    if (!text) return;
+
+    try {
+      const encrypted = await encryptMessage(encryptionKey, text);
+      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: encrypted });
+      input.value = '';
+      socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
+    } catch (err) {
+      showToast('Ошибка шифрования', 'error');
+      console.error(err);
+    }
+  }
+
+  function handleTyping() {
+    socket.emit('typing', { roomId: currentRoomId, nick: myNick });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
+    }, 2000);
+  }
+
+  // ====== Инициализация Socket ======
   function initSocket() {
     socket = io();
 
@@ -461,17 +581,22 @@
       currentRoomId = data.roomId;
       const url = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
       document.getElementById('room-link').textContent = url;
-      document.getElementById('room-id-display').textContent = currentRoomId;
+      document.getElementById('room-id-display-1').textContent = currentRoomId;
       showScreen('room-created');
+      showToast('Комната успешно создана');
     });
 
     socket.on('userJoined', (data) => {
-      document.getElementById('user-count').textContent = data.userCount;
-      addSystemMessage(`👤 ${data.nick} присоединился к комнате`);
+      const countEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
+      if(isCreator) countEl.textContent = data.userCount;
+      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участника`;
+      addSystemMessage(`👤 ${data.nick} присоединился`);
     });
 
     socket.on('userLeft', (data) => {
-      document.getElementById('user-count').textContent = data.userCount;
+      const countEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
+      if(isCreator) countEl.textContent = data.userCount;
+      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участника`;
       addSystemMessage(`👋 ${data.nick} покинул комнату`);
     });
 
@@ -485,12 +610,18 @@
     });
 
     socket.on('userTyping', (data) => {
-      document.getElementById('typing-text').textContent = `${data.nick} печатает`;
-      document.getElementById('typing-indicator').classList.remove('hidden');
+      if (data.nick !== myNick) {
+        document.getElementById('typing-text').textContent = `${data.nick} печатает`;
+        document.getElementById('typing-indicator').classList.remove('hidden');
+        const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
+        document.getElementById(areaId).scrollTop = document.getElementById(areaId).scrollHeight;
+      }
     });
 
-    socket.on('userStoppedTyping', () => {
-      document.getElementById('typing-indicator').classList.add('hidden');
+    socket.on('userStoppedTyping', (data) => {
+      if (data.nick !== myNick) {
+        document.getElementById('typing-indicator').classList.add('hidden');
+      }
     });
 
     socket.on('roomEnded', () => {
@@ -498,101 +629,17 @@
     });
 
     socket.on('error', (data) => {
-      alert(data.message);
+      showToast(data.message, 'error');
     });
   }
 
-  // ====== Добавление сообщений ======
-  function addMessage(nick, text, isSelf, timestamp) {
-    const area = document.getElementById(isCreator ? 'chat-area' : 'chat-area-2');
-    const msg = document.createElement('div');
-    msg.className = 'msg-in bg-gray-900/60 border border-gray-800 rounded-xl p-3';
-    const time = new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    const nickColor = isSelf ? 'text-cyan-300' : 'text-gray-200';
-    msg.innerHTML = `
-      <div class="flex items-center justify-between mb-1">
-        <span class="text-xs font-semibold ${nickColor}">${escapeHtml(nick)}</span>
-        <span class="text-xs text-gray-500 mono">${time}</span>
-      </div>
-      <p class="text-sm text-gray-200 break-words">${escapeHtml(text)}</p>
-    `;
-    area.appendChild(msg);
-    area.scrollTop = area.scrollHeight;
-  }
-
-  function addSystemMessage(text) {
-    const area = document.getElementById(isCreator ? 'chat-area' : 'chat-area-2');
-    const msg = document.createElement('div');
-    msg.className = 'msg-in text-center text-xs text-gray-500 py-2';
-    msg.textContent = text;
-    area.appendChild(msg);
-    area.scrollTop = area.scrollHeight;
-  }
-
-  function escapeHtml(s) {
-    const div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
-  }
-
-  // ====== Отправка сообщения ======
-  async function sendMessage() {
-    const inputId = isCreator ? 'msg-input' : 'msg-input-2';
-    const input = document.getElementById(inputId);
-    const text = input.value.trim();
-    if (!text) return;
-
-    try {
-      const encrypted = await encryptMessage(encryptionKey, text);
-      socket.emit('sendMessage', {
-        roomId: currentRoomId,
-        encryptedMessage: encrypted
-      });
-      input.value = '';
-    } catch (err) {
-      console.error('Ошибка шифрования:', err);
-    }
-  }
-
-  // ====== Индикатор набора ======
-  function handleTyping() {
-    socket.emit('typing', { roomId: currentRoomId, nick: myNick });
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
-    }, 2000);
-  }
-
-  // ====== Копирование ссылки ======
-  document.getElementById('copy-btn').addEventListener('click', async () => {
-    const link = document.getElementById('room-link').textContent;
-    try {
-      await navigator.clipboard.writeText(link);
-      const txt = document.getElementById('copy-text');
-      const btn = document.getElementById('copy-btn');
-      txt.textContent = '✓ Скопировано';
-      btn.classList.add('copied-flash');
-      setTimeout(() => {
-        txt.textContent = 'Копировать';
-        btn.classList.remove('copied-flash');
-      }, 2000);
-    } catch (err) {
-      console.error('Ошибка копирования:', err);
-    }
-  });
-
-  // ====== Создание комнаты ======
+  // ====== Обработчики событий ======
   document.getElementById('create-btn').addEventListener('click', async () => {
     const nick = document.getElementById('nick-input').value.trim();
-    if (!nick) {
-      alert('Введите никнейм');
-      return;
-    }
+    if (!nick) { showToast('Введите никнейм', 'error'); return; }
 
     myNick = nick;
     isCreator = true;
-
-    // Генерируем ключ шифрования
     encryptionKey = await generateKey();
     window.encryptionKeyBase64 = await exportKey(encryptionKey);
 
@@ -600,13 +647,9 @@
     socket.emit('createRoom', { nick });
   });
 
-  // ====== Присоединение по ссылке ======
-  document.getElementById('join-btn').addEventListener('click', () => {
+  document.getElementById('join-btn').addEventListener('click', async () => {
     const link = document.getElementById('join-link-input').value.trim();
-    if (!link) {
-      alert('Вставьте ссылку комнаты');
-      return;
-    }
+    if (!link) { showToast('Вставьте ссылку комнаты', 'error'); return; }
 
     try {
       const url = new URL(link);
@@ -615,10 +658,7 @@
       const roomId = params.get('room');
       const keyBase64 = params.get('key');
 
-      if (!roomId || !keyBase64) {
-        alert('Неверная ссылка');
-        return;
-      }
+      if (!roomId || !keyBase64) { showToast('Неверный формат ссылки', 'error'); return; }
 
       currentRoomId = roomId;
       window.encryptionKeyBase64 = keyBase64;
@@ -627,17 +667,13 @@
       document.getElementById('join-room-id').textContent = roomId;
       showScreen('join');
     } catch (err) {
-      alert('Неверная ссылка');
+      showToast('Неверная ссылка', 'error');
     }
   });
 
-  // ====== Вход в комнату ======
   document.getElementById('join-room-btn').addEventListener('click', () => {
     const nick = document.getElementById('join-nick-input').value.trim();
-    if (!nick) {
-      alert('Введите никнейм');
-      return;
-    }
+    if (!nick) { showToast('Введите никнейм', 'error'); return; }
 
     myNick = nick;
     isCreator = false;
@@ -650,50 +686,54 @@
     showScreen('chat');
   });
 
-  // ====== Отправка сообщений (оба экрана) ======
-  document.getElementById('send-btn').addEventListener('click', sendMessage);
+  document.getElementById('send-btn-1').addEventListener('click', sendMessage);
   document.getElementById('send-btn-2').addEventListener('click', sendMessage);
 
-  document.getElementById('msg-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
-    else handleTyping();
+  document.getElementById('msg-input-1').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage(); else handleTyping();
   });
-
   document.getElementById('msg-input-2').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
-    else handleTyping();
+    if (e.key === 'Enter') sendMessage(); else handleTyping();
   });
 
-  // ====== Завершение комнаты ======
+  document.getElementById('copy-btn').addEventListener('click', async () => {
+    const link = document.getElementById('room-link').textContent;
+    try {
+      await navigator.clipboard.writeText(link);
+      const txt = document.getElementById('copy-text');
+      const btn = document.getElementById('copy-btn');
+      txt.textContent = 'Скопировано!';
+      btn.classList.add('bg-[var(--success)]/20', 'text-[var(--success)]');
+      showToast('Ссылка скопирована в буфер обмена');
+      setTimeout(() => {
+        txt.textContent = 'Копировать';
+        btn.classList.remove('bg-[var(--success)]/20', 'text-[var(--success)]');
+      }, 2000);
+    } catch (err) {
+      showToast('Не удалось скопировать', 'error');
+    }
+  });
+
   function confirmEnd() {
     document.getElementById('modal').classList.remove('hidden');
   }
-
-  document.getElementById('end-room-btn').addEventListener('click', confirmEnd);
+  document.getElementById('end-room-btn-1').addEventListener('click', confirmEnd);
   document.getElementById('end-room-btn-2').addEventListener('click', confirmEnd);
-
-  document.getElementById('cancel-end-btn').addEventListener('click', () => {
-    document.getElementById('modal').classList.add('hidden');
-  });
-
+  document.getElementById('cancel-end-btn').addEventListener('click', () => document.getElementById('modal').classList.add('hidden'));
   document.getElementById('confirm-end-btn').addEventListener('click', () => {
     socket.emit('endRoom', { roomId: currentRoomId });
     document.getElementById('modal').classList.add('hidden');
   });
 
-  // ====== Новая комната ======
-  document.getElementById('new-room-btn').addEventListener('click', () => {
-    location.reload();
-  });
+  document.getElementById('new-room-btn').addEventListener('click', () => location.reload());
 
-  // ====== Проверка URL при загрузке ======
+  // Проверка URL при загрузке
   window.addEventListener('load', () => {
     const hash = window.location.hash.substring(1);
     if (hash) {
       const params = new URLSearchParams(hash);
       const roomId = params.get('room');
       const keyBase64 = params.get('key');
-
       if (roomId && keyBase64) {
         currentRoomId = roomId;
         window.encryptionKeyBase64 = keyBase64;
@@ -701,11 +741,10 @@
           encryptionKey = key;
           document.getElementById('join-room-id').textContent = roomId;
           showScreen('join');
-        });
+        }).catch(() => showToast('Ошибка ключа шифрования', 'error'));
       }
     }
   });
 </script>
-
 </body>
 </html>
