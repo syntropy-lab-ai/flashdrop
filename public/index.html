@@ -150,7 +150,6 @@
     40% { transform: scale(1); }
   }
 
-  /* Стили для голосовых сообщений */
   .voice-recording {
     animation: voice-pulse 1.5s ease-in-out infinite;
   }
@@ -164,6 +163,7 @@
     align-items: center;
     gap: 10px;
     width: 100%;
+    min-width: 200px;
   }
   .audio-player button {
     background: rgba(0, 212, 255, 0.2);
@@ -188,6 +188,7 @@
     border-radius: 2px;
     overflow: hidden;
     cursor: pointer;
+    min-width: 80px;
   }
   .audio-player .progress-fill {
     height: 100%;
@@ -317,7 +318,7 @@
       <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
         <input id="msg-input-1" type="text" placeholder="Написать сообщение..." autocomplete="off"
                class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
-        <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение">
+        <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение (удерживайте)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
           </svg>
@@ -389,7 +390,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
-        <span id="end-btn-text">Завершить</span>
+        <span id="end-btn-text">Выйти</span>
       </button>
     </header>
 
@@ -416,7 +417,7 @@
       <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
         <input id="msg-input-2" type="text" placeholder="Написать сообщение..." autocomplete="off"
                class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
-        <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение">
+        <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение (удерживайте)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
           </svg>
@@ -473,7 +474,7 @@
 </div>
 
 <script type="module">
-  // ====== Web Audio API для звуковых уведомлений ======
+  // ====== Web Audio API ======
   let audioContext = null;
 
   function ensureAudioContext() {
@@ -562,7 +563,6 @@
     return new TextDecoder().decode(decrypted);
   }
 
-  // Шифрование бинарных данных (для голосовых сообщений)
   async function encryptBinary(key, binaryData) {
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv }, key, binaryData);
@@ -577,7 +577,7 @@
     const iv = combined.slice(0, 12);
     const data = combined.slice(12);
     const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-    return decrypted;
+    return new Uint8Array(decrypted);
   }
 
   // ====== Состояние ======
@@ -588,7 +588,6 @@
   let isCreator = false;
   let typingTimeout = null;
 
-  // Состояние записи голоса
   let mediaRecorder = null;
   let audioChunks = [];
   let isRecording = false;
@@ -678,7 +677,6 @@
     area.appendChild(msg);
     area.scrollTop = area.scrollHeight;
 
-    // Создаём аудио элемент
     const audioBlob = new Blob([audioData], { type: 'audio/webm' });
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
@@ -693,15 +691,20 @@
         playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
         isPlaying = false;
       } else {
-        audio.play();
+        audio.play().catch(err => {
+          console.error('Ошибка воспроизведения:', err);
+          showToast('Не удалось воспроизвести аудио', 'error');
+        });
         playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
         isPlaying = true;
       }
     });
 
     audio.addEventListener('timeupdate', () => {
-      const progress = (audio.currentTime / audio.duration) * 100;
-      progressFill.style.width = `${progress}%`;
+      if (audio.duration) {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        progressFill.style.width = `${progress}%`;
+      }
     });
 
     audio.addEventListener('ended', () => {
@@ -710,10 +713,16 @@
       isPlaying = false;
     });
 
+    audio.addEventListener('error', () => {
+      showToast('Ошибка загрузки аудио', 'error');
+    });
+
     progressBar.addEventListener('click', (e) => {
       const rect = progressBar.getBoundingClientRect();
       const pos = (e.clientX - rect.left) / rect.width;
-      audio.currentTime = pos * audio.duration;
+      if (audio.duration) {
+        audio.currentTime = pos * audio.duration;
+      }
     });
   }
 
@@ -747,9 +756,28 @@
 
   // ====== Запись голоса ======
   async function startRecording() {
+    if (isRecording) return;
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        }
+      });
+      
+      // Выбираем поддерживаемый формат
+      let mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = '';
+        }
+      }
+
+      const options = mimeType ? { mimeType, audioBitsPerSecond: 128000 } : {};
+      mediaRecorder = new MediaRecorder(stream, options);
       audioChunks = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -759,10 +787,18 @@
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const duration = (Date.now() - recordingStartTime) / 1000;
+        
+        // Минимальная длительность 0.5 сек
+        if (duration < 0.5) {
+          showToast('Слишком короткая запись', 'error');
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
         const audioArrayBuffer = await audioBlob.arrayBuffer();
         const audioUint8Array = new Uint8Array(audioArrayBuffer);
-        const duration = (Date.now() - recordingStartTime) / 1000;
 
         try {
           const encrypted = await encryptBinary(encryptionKey, audioUint8Array);
@@ -770,9 +806,10 @@
             roomId: currentRoomId, 
             encryptedMessage: encrypted, 
             type: 'voice',
-            duration: duration
+            duration: Math.round(duration * 10) / 10
           });
           playNotificationSound('outgoing');
+          showToast(`Голосовое отправлено (${formatDuration(duration)})`);
         } catch (err) {
           showToast('Ошибка шифрования аудио: ' + err.message, 'error');
           console.error('Ошибка шифрования аудио:', err);
@@ -781,7 +818,13 @@
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.onerror = (err) => {
+        console.error('Ошибка MediaRecorder:', err);
+        showToast('Ошибка записи', 'error');
+        stopRecordingUI();
+      };
+
+      mediaRecorder.start(100); // собираем чанки каждые 100мс
       isRecording = true;
       recordingStartTime = Date.now();
 
@@ -791,24 +834,19 @@
       voiceBtn1.classList.add('voice-recording', 'bg-red-600');
       voiceBtn2.classList.add('voice-recording', 'bg-red-600');
 
-      // Таймер
       recordingTimer = setInterval(() => {
         const elapsed = (Date.now() - recordingStartTime) / 1000;
         voiceBtn1.title = `Запись: ${formatDuration(elapsed)}`;
         voiceBtn2.title = `Запись: ${formatDuration(elapsed)}`;
       }, 100);
 
-      showToast('Запись началась... Отпустите кнопку для отправки');
     } catch (err) {
       console.error('Ошибка доступа к микрофону:', err);
-      showToast('Не удалось получить доступ к микрофону', 'error');
+      showToast('Не удалось получить доступ к микрофону. Проверьте разрешения.', 'error');
     }
   }
 
-  function stopRecording() {
-    if (!isRecording || !mediaRecorder) return;
-
-    mediaRecorder.stop();
+  function stopRecordingUI() {
     isRecording = false;
     clearInterval(recordingTimer);
 
@@ -816,8 +854,20 @@
     const voiceBtn2 = document.getElementById('voice-btn-2');
     voiceBtn1.classList.remove('voice-recording', 'bg-red-600');
     voiceBtn2.classList.remove('voice-recording', 'bg-red-600');
-    voiceBtn1.title = 'Голосовое сообщение';
-    voiceBtn2.title = 'Голосовое сообщение';
+    voiceBtn1.title = 'Голосовое сообщение (удерживайте)';
+    voiceBtn2.title = 'Голосовое сообщение (удерживайте)';
+  }
+
+  function stopRecording() {
+    if (!isRecording || !mediaRecorder) {
+      stopRecordingUI();
+      return;
+    }
+
+    if (mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+    stopRecordingUI();
   }
 
   function handleTyping() {
@@ -832,7 +882,16 @@
   // ====== Инициализация Socket ======
   function initSocket() {
     if (socket) return;
-    socket = io();
+    
+    // Увеличиваем лимит на клиенте тоже
+    socket = io({
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Ошибка подключения:', err);
+      showToast('Ошибка подключения к серверу', 'error');
+    });
 
     socket.on('roomCreated', (data) => {
       currentRoomId = data.roomId;
@@ -860,20 +919,24 @@
 
     socket.on('message', async (data) => {
       try {
+        const isSelf = data.userId === socket.id;
+        
+        // ИСПРАВЛЕНО: проверяем тип сообщения
         if (data.type === 'voice') {
           const audioData = await decryptBinary(encryptionKey, data.encryptedMessage);
-          addVoiceMessage(data.nick, audioData, data.duration, data.userId === socket.id, data.timestamp);
+          const duration = data.duration || 0;
+          addVoiceMessage(data.nick, audioData, duration, isSelf, data.timestamp);
         } else {
           const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
-          addMessage(data.nick, decrypted, data.userId === socket.id, data.timestamp);
+          addMessage(data.nick, decrypted, isSelf, data.timestamp);
         }
         
-        if (data.userId !== socket.id) {
+        if (!isSelf) {
           playNotificationSound('incoming');
         }
       } catch (err) {
-        console.error('Ошибка расшифровки:', err);
-        showToast('Не удалось расшифровать сообщение', 'error');
+        console.error('Ошибка обработки сообщения:', err);
+        showToast('Ошибка получения сообщения', 'error');
       }
     });
 
@@ -899,7 +962,7 @@
     });
   }
 
-  // ====== Обработчики событий ======
+  // ====== Обработчики ======
   document.getElementById('create-btn').addEventListener('click', async () => {
     ensureAudioContext();
     const nick = document.getElementById('nick-input').value.trim();
