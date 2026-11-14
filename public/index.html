@@ -15,7 +15,6 @@
     --card: #0f111a;
     --card-border: #1e2235;
     --accent: #00d4ff;
-    --accent-glow: rgba(0, 212, 255, 0.4);
     --text: #f0f2f5;
     --muted: #8b92a8;
     --danger: #ff4757;
@@ -36,32 +35,20 @@
 
   .mono { font-family: 'JetBrains Mono', monospace; }
 
-  /* Фоновые эффекты */
   .bg-glow {
-    position: fixed;
-    top: -20%;
-    left: -10%;
-    width: 60vw;
-    height: 60vw;
+    position: fixed; top: -20%; left: -10%;
+    width: 60vw; height: 60vw;
     background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
-    filter: blur(80px);
-    z-index: 0;
-    pointer-events: none;
+    filter: blur(80px); z-index: 0; pointer-events: none;
     animation: float 15s ease-in-out infinite;
   }
   .bg-glow-2 {
-    position: fixed;
-    bottom: -20%;
-    right: -10%;
-    width: 50vw;
-    height: 50vw;
+    position: fixed; bottom: -20%; right: -10%;
+    width: 50vw; height: 50vw;
     background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-    filter: blur(80px);
-    z-index: 0;
-    pointer-events: none;
+    filter: blur(80px); z-index: 0; pointer-events: none;
     animation: float 20s ease-in-out infinite reverse;
   }
-
   @keyframes float {
     0%, 100% { transform: translate(0, 0); }
     50% { transform: translate(30px, -30px); }
@@ -69,7 +56,6 @@
 
   .content-layer { position: relative; z-index: 1; }
 
-  /* Анимации */
   @keyframes slide-up {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -79,11 +65,6 @@
   .delay-200 { animation-delay: 0.2s; opacity: 0; }
   .delay-300 { animation-delay: 0.3s; opacity: 0; }
 
-  @keyframes pulse-ring {
-    0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(0, 212, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
-  }
   .btn-primary {
     background: linear-gradient(135deg, #0077ff 0%, #00d4ff 100%);
     transition: all 0.3s ease;
@@ -94,15 +75,13 @@
   }
   .btn-primary:active { transform: translateY(0); }
 
-  /* Сообщения */
   @keyframes msg-pop {
     from { opacity: 0; transform: translateY(10px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
   .message-bubble {
     animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    max-width: 85%;
-    word-wrap: break-word;
+    max-width: 85%; word-wrap: break-word;
   }
   .message-bubble.self {
     background: linear-gradient(135deg, rgba(0, 119, 255, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%);
@@ -115,13 +94,10 @@
     margin-right: auto;
   }
 
-  /* Скроллбар */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #2d3348; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #4a5168; }
 
-  /* Поля ввода */
   .input-field {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--card-border);
@@ -133,36 +109,25 @@
     outline: none;
   }
 
-  /* Экраны */
   .screen { display: none; }
   .screen.active { display: flex; }
 
-  /* Тосты */
   .toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    position: fixed; top: 20px; right: 20px; z-index: 9999;
+    display: flex; flex-direction: column; gap: 10px;
   }
   .toast {
     background: rgba(15, 17, 26, 0.95);
     border: 1px solid var(--card-border);
     backdrop-filter: blur(10px);
-    padding: 12px 16px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    padding: 12px 16px; border-radius: 12px;
+    display: flex; align-items: center; gap: 10px;
     font-size: 14px;
     animation: slide-in-right 0.3s ease forwards;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   .toast.error { border-left: 3px solid var(--danger); }
   .toast.success { border-left: 3px solid var(--success); }
-  
   @keyframes slide-in-right {
     from { opacity: 0; transform: translateX(100%); }
     to { opacity: 1; transform: translateX(0); }
@@ -171,10 +136,8 @@
     to { opacity: 0; transform: translateX(100%); }
   }
 
-  /* Индикатор набора */
   .typing-dot {
-    width: 6px;
-    height: 6px;
+    width: 6px; height: 6px;
     background: var(--muted);
     border-radius: 50%;
     display: inline-block;
@@ -211,7 +174,7 @@
 
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
-        <input id="nick-input" type="text" placeholder="Например: Виктор" maxlength="20"
+        <input id="nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20"
                class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
 
         <button id="create-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
@@ -326,7 +289,7 @@
 
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
-        <input id="join-nick-input" type="text" placeholder="Например: Алиса" maxlength="20"
+        <input id="join-nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20"
                class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
 
         <button id="join-room-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
@@ -447,27 +410,29 @@
 
 <script type="module">
   // ====== Web Crypto API ======
-  const cryptoApi = window.crypto.subtle;
+  // ВАЖНО: getRandomValues находится на window.crypto, а не на subtle!
+  const subtle = window.crypto.subtle;
 
   async function generateKey() {
-    return await cryptoApi.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    return await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
   async function exportKey(key) {
-    const exported = await cryptoApi.exportKey('raw', key);
+    const exported = await subtle.exportKey('raw', key);
     return btoa(String.fromCharCode(...new Uint8Array(exported)));
   }
 
   async function importKey(keyBase64) {
     const keyData = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
-    return await cryptoApi.importKey('raw', keyData, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    return await subtle.importKey('raw', keyData, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
   async function encryptMessage(key, message) {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
-    const iv = cryptoApi.getRandomValues(new Uint8Array(12));
-    const encrypted = await cryptoApi.encrypt({ name: 'AES-GCM', iv }, key, data);
+    // ИСПРАВЛЕНО: getRandomValues вызываем на window.crypto, а не на subtle
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
     const combined = new Uint8Array(iv.length + encrypted.byteLength);
     combined.set(iv, 0);
     combined.set(new Uint8Array(encrypted), iv.length);
@@ -478,7 +443,7 @@
     const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
     const iv = combined.slice(0, 12);
     const data = combined.slice(12);
-    const decrypted = await cryptoApi.decrypt({ name: 'AES-GCM', iv }, key, data);
+    const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
     return new TextDecoder().decode(decrypted);
   }
 
@@ -560,12 +525,13 @@
       input.value = '';
       socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
     } catch (err) {
-      showToast('Ошибка шифрования', 'error');
-      console.error(err);
+      showToast('Ошибка шифрования: ' + err.message, 'error');
+      console.error('Ошибка шифрования:', err);
     }
   }
 
   function handleTyping() {
+    if (!socket) return;
     socket.emit('typing', { roomId: currentRoomId, nick: myNick });
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
@@ -575,6 +541,7 @@
 
   // ====== Инициализация Socket ======
   function initSocket() {
+    if (socket) return; // не пересоздаём
     socket = io();
 
     socket.on('roomCreated', (data) => {
@@ -588,15 +555,15 @@
 
     socket.on('userJoined', (data) => {
       const countEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if(isCreator) countEl.textContent = data.userCount;
-      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участника`;
+      if (isCreator) countEl.textContent = data.userCount;
+      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участник`;
       addSystemMessage(`👤 ${data.nick} присоединился`);
     });
 
     socket.on('userLeft', (data) => {
       const countEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if(isCreator) countEl.textContent = data.userCount;
-      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участника`;
+      if (isCreator) countEl.textContent = data.userCount;
+      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участник`;
       addSystemMessage(`👋 ${data.nick} покинул комнату`);
     });
 
@@ -606,6 +573,7 @@
         addMessage(data.nick, decrypted, data.userId === socket.id, data.timestamp);
       } catch (err) {
         console.error('Ошибка расшифровки:', err);
+        showToast('Не удалось расшифровать сообщение', 'error');
       }
     });
 
@@ -613,8 +581,6 @@
       if (data.nick !== myNick) {
         document.getElementById('typing-text').textContent = `${data.nick} печатает`;
         document.getElementById('typing-indicator').classList.remove('hidden');
-        const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
-        document.getElementById(areaId).scrollTop = document.getElementById(areaId).scrollHeight;
       }
     });
 
