@@ -10,20 +10,22 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
+
+// Увеличиваем лимит размера сообщений для голосовых (10 МБ)
 const io = new Server(httpServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  maxHttpBufferSize: 10e6
 });
 
 app.use(cors());
 app.use(express.static(join(__dirname, 'public')));
 
-// Хранилище комнат ТОЛЬКО в оперативной памяти (без БД)
+// Хранилище комнат ТОЛЬКО в оперативной памяти
 const rooms = new Map();
 
-// Генерация случайного ID комнаты
 function generateRoomId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
@@ -36,7 +38,6 @@ function generateRoomId() {
 io.on('connection', (socket) => {
   console.log('Пользователь подключился:', socket.id);
 
-  // Создание комнаты
   socket.on('createRoom', (data) => {
     const { nick } = data;
     const roomId = generateRoomId();
@@ -54,7 +55,6 @@ io.on('connection', (socket) => {
     console.log(`Комната создана: ${roomId}, создатель: ${nick}`);
   });
 
-  // Присоединение к комнате
   socket.on('joinRoom', (data) => {
     const { roomId, nick } = data;
     const room = rooms.get(roomId);
@@ -67,7 +67,6 @@ io.on('connection', (socket) => {
     room.users.set(socket.id, { id: socket.id, nick });
     socket.join(roomId);
 
-    // Уведомляем всех в комнате
     io.to(roomId).emit('userJoined', {
       nick,
       userCount: room.users.size
@@ -76,9 +75,9 @@ io.on('connection', (socket) => {
     console.log(`${nick} присоединился к комнате ${roomId}`);
   });
 
-  // Отправка сообщения
+  // ИСПРАВЛЕНО: берём type и duration и передаём их дальше
   socket.on('sendMessage', (data) => {
-    const { roomId, encryptedMessage } = data;
+    const { roomId, encryptedMessage, type = 'text', duration = 0 } = data;
     const room = rooms.get(roomId);
 
     if (!room) return;
@@ -86,16 +85,16 @@ io.on('connection', (socket) => {
     const user = room.users.get(socket.id);
     if (!user) return;
 
-    // Отправляем зашифрованное сообщение всем в комнате (включая отправителя)
     io.to(roomId).emit('message', {
       userId: socket.id,
       nick: user.nick,
       encryptedMessage,
+      type,
+      duration,
       timestamp: Date.now()
     });
   });
 
-  // Индикатор набора текста
   socket.on('typing', (data) => {
     const { roomId, nick } = data;
     socket.to(roomId).emit('userTyping', { nick });
@@ -106,7 +105,6 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('userStoppedTyping', { nick });
   });
 
-  // Завершение комнаты (только создатель)
   socket.on('endRoom', (data) => {
     const { roomId } = data;
     const room = rooms.get(roomId);
@@ -114,31 +112,24 @@ io.on('connection', (socket) => {
     if (!room) return;
     if (room.creator !== socket.id) return;
 
-    // Уведомляем всех
     io.to(roomId).emit('roomEnded');
-
-    // Удаляем комнату из памяти
     rooms.delete(roomId);
     console.log(`Комната ${roomId} закрыта и удалена`);
   });
 
-  // Отключение
   socket.on('disconnect', () => {
     console.log('Пользователь отключился:', socket.id);
 
-    // Ищем комнату пользователя
     for (const [roomId, room] of rooms.entries()) {
       if (room.users.has(socket.id)) {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
 
-        // Если это создатель — закрываем комнату
         if (room.creator === socket.id) {
           io.to(roomId).emit('roomEnded');
           rooms.delete(roomId);
           console.log(`Комната ${roomId} закрыта (создатель вышел)`);
         } else {
-          // Уведомляем остальных
           io.to(roomId).emit('userLeft', {
             nick: user.nick,
             userCount: room.users.size
