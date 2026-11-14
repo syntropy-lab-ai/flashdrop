@@ -918,27 +918,40 @@
     });
 
     socket.on('message', async (data) => {
-      try {
-        const isSelf = data.userId === socket.id;
-        
-        // ИСПРАВЛЕНО: проверяем тип сообщения
-        if (data.type === 'voice') {
-          const audioData = await decryptBinary(encryptionKey, data.encryptedMessage);
-          const duration = data.duration || 0;
-          addVoiceMessage(data.nick, audioData, duration, isSelf, data.timestamp);
-        } else {
-          const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
-          addMessage(data.nick, decrypted, isSelf, data.timestamp);
-        }
-        
-        if (!isSelf) {
-          playNotificationSound('incoming');
-        }
-      } catch (err) {
-        console.error('Ошибка обработки сообщения:', err);
-        showToast('Ошибка получения сообщения', 'error');
-      }
-    });
+  // ОТЛАДКА: смотрим что приходит
+  console.log('📨 Получено сообщение:', {
+    type: data.type,
+    duration: data.duration,
+    encryptedLength: data.encryptedMessage?.length,
+    userId: data.userId,
+    isSelf: data.userId === socket.id
+  });
+  
+  try {
+    const isSelf = data.userId === socket.id;
+    
+    // Явная проверка типа
+    if (data.type === 'voice') {
+      console.log('🎤 Голосовое сообщение, расшифровываю...');
+      const audioData = await decryptBinary(encryptionKey, data.encryptedMessage);
+      console.log('✅ Аудио расшифровано, размер:', audioData.length, 'байт');
+      const duration = data.duration || 0;
+      addVoiceMessage(data.nick, audioData, duration, isSelf, data.timestamp);
+    } else {
+      console.log('💬 Текстовое сообщение, расшифровываю...');
+      const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
+      console.log('✅ Текст расшифрован:', decrypted.substring(0, 50));
+      addMessage(data.nick, decrypted, isSelf, data.timestamp);
+    }
+    
+    if (!isSelf) {
+      playNotificationSound('incoming');
+    }
+  } catch (err) {
+    console.error('❌ Ошибка обработки сообщения:', err);
+    showToast('Ошибка получения сообщения', 'error');
+  }
+});
 
     socket.on('userTyping', (data) => {
       if (data.nick !== myNick) {
