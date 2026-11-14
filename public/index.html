@@ -332,7 +332,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
-        Завершить
+        <span id="end-btn-text">Завершить</span>
       </button>
     </header>
 
@@ -398,19 +398,18 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
         </svg>
       </div>
-      <h3 class="font-bold text-white text-lg">Завершить комнату?</h3>
+      <h3 class="font-bold text-white text-lg" id="modal-title">Завершить комнату?</h3>
     </div>
-    <p class="text-sm text-[var(--muted)] mb-6 leading-relaxed">Вся переписка будет удалена безвозвратно. Участники потеряют доступ к чату. Это действие нельзя отменить.</p>
+    <p class="text-sm text-[var(--muted)] mb-6 leading-relaxed" id="modal-text">Вся переписка будет удалена безвозвратно. Участники потеряют доступ к чату. Это действие нельзя отменить.</p>
     <div class="flex gap-3">
       <button id="cancel-end-btn" class="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl transition text-sm font-medium border border-white/10">Отмена</button>
-      <button id="confirm-end-btn" class="flex-1 bg-[var(--danger)] hover:bg-red-500 text-white py-3 rounded-xl transition text-sm font-medium shadow-lg shadow-red-500/20">Да, завершить</button>
+      <button id="confirm-end-btn" class="flex-1 bg-[var(--danger)] hover:bg-red-500 text-white py-3 rounded-xl transition text-sm font-medium shadow-lg shadow-red-500/20" id="confirm-btn-text">Да, завершить</button>
     </div>
   </div>
 </div>
 
 <script type="module">
   // ====== Web Crypto API ======
-  // ВАЖНО: getRandomValues находится на window.crypto, а не на subtle!
   const subtle = window.crypto.subtle;
 
   async function generateKey() {
@@ -430,7 +429,6 @@
   async function encryptMessage(key, message) {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
-    // ИСПРАВЛЕНО: getRandomValues вызываем на window.crypto, а не на subtle
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
     const combined = new Uint8Array(iv.length + encrypted.byteLength);
@@ -541,7 +539,7 @@
 
   // ====== Инициализация Socket ======
   function initSocket() {
-    if (socket) return; // не пересоздаём
+    if (socket) return;
     socket = io();
 
     socket.on('roomCreated', (data) => {
@@ -549,6 +547,10 @@
       const url = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
       document.getElementById('room-link').textContent = url;
       document.getElementById('room-id-display-1').textContent = currentRoomId;
+      
+      // ИСПРАВЛЕНО: обновляем URL в адресной строке
+      window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
+      
       showScreen('room-created');
       showToast('Комната успешно создана');
     });
@@ -649,6 +651,10 @@
 
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
+    
+    // ИСПРАВЛЕНО: меняем текст кнопки "Завершить" на "Выйти" для участника
+    document.getElementById('end-btn-text').textContent = 'Выйти';
+    
     showScreen('chat');
   });
 
@@ -680,18 +686,60 @@
     }
   });
 
+  // ИСПРАВЛЕНО: разные действия для создателя и участника
   function confirmEnd() {
+    const modalTitle = document.getElementById('modal-title');
+    const modalText = document.getElementById('modal-text');
+    const confirmBtnText = document.getElementById('confirm-btn-text');
+    
+    if (isCreator) {
+      modalTitle.textContent = 'Завершить комнату?';
+      modalText.textContent = 'Вся переписка будет удалена безвозвратно. Участники потеряют доступ к чату. Это действие нельзя отменить.';
+      confirmBtnText.textContent = 'Да, завершить';
+    } else {
+      modalTitle.textContent = 'Выйти из комнаты?';
+      modalText.textContent = 'Вы покинете чат. Переписка останется доступной для других участников.';
+      confirmBtnText.textContent = 'Да, выйти';
+    }
+    
     document.getElementById('modal').classList.remove('hidden');
   }
+
   document.getElementById('end-room-btn-1').addEventListener('click', confirmEnd);
   document.getElementById('end-room-btn-2').addEventListener('click', confirmEnd);
-  document.getElementById('cancel-end-btn').addEventListener('click', () => document.getElementById('modal').classList.add('hidden'));
+  
+  document.getElementById('cancel-end-btn').addEventListener('click', () => {
+    document.getElementById('modal').classList.add('hidden');
+  });
+  
   document.getElementById('confirm-end-btn').addEventListener('click', () => {
-    socket.emit('endRoom', { roomId: currentRoomId });
+    if (isCreator) {
+      // Создатель завершает комнату
+      socket.emit('endRoom', { roomId: currentRoomId });
+    } else {
+      // Участник просто выходит
+      socket.disconnect();
+      socket = null;
+      showScreen('landing');
+      showToast('Вы вышли из комнаты');
+    }
     document.getElementById('modal').classList.add('hidden');
   });
 
-  document.getElementById('new-room-btn').addEventListener('click', () => location.reload());
+  document.getElementById('new-room-btn').addEventListener('click', () => {
+    // Сбрасываем всё состояние
+    socket = null;
+    currentRoomId = null;
+    encryptionKey = null;
+    myNick = '';
+    isCreator = false;
+    window.encryptionKeyBase64 = null;
+    
+    // Очищаем URL
+    window.history.replaceState(null, '', window.location.pathname);
+    
+    location.reload();
+  });
 
   // Проверка URL при загрузке
   window.addEventListener('load', () => {
@@ -707,7 +755,12 @@
           encryptionKey = key;
           document.getElementById('join-room-id').textContent = roomId;
           showScreen('join');
-        }).catch(() => showToast('Ошибка ключа шифрования', 'error'));
+        }).catch((err) => {
+          console.error('Ошибка импорта ключа:', err);
+          showToast('Ошибка ключа шифрования. Возможно, ссылка устарела или повреждена.', 'error');
+          // Очищаем URL
+          window.history.replaceState(null, '', window.location.pathname);
+        });
       }
     }
   });
