@@ -403,7 +403,9 @@
     <p class="text-sm text-[var(--muted)] mb-6 leading-relaxed" id="modal-text">Вся переписка будет удалена безвозвратно. Участники потеряют доступ к чату. Это действие нельзя отменить.</p>
     <div class="flex gap-3">
       <button id="cancel-end-btn" class="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl transition text-sm font-medium border border-white/10">Отмена</button>
-      <button id="confirm-end-btn" class="flex-1 bg-[var(--danger)] hover:bg-red-500 text-white py-3 rounded-xl transition text-sm font-medium shadow-lg shadow-red-500/20" id="confirm-btn-text">Да, завершить</button>
+      <button id="confirm-end-btn" class="flex-1 bg-[var(--danger)] hover:bg-red-500 text-white py-3 rounded-xl transition text-sm font-medium shadow-lg shadow-red-500/20">
+        <span id="confirm-btn-text">Да, завершить</span>
+      </button>
     </div>
   </div>
 </div>
@@ -412,17 +414,33 @@
   // ====== Web Crypto API ======
   const subtle = window.crypto.subtle;
 
+  // ИСПРАВЛЕНО: URL-safe base64 (заменяем + / = на безопасные символы)
+  function toUrlSafeBase64(base64) {
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function fromUrlSafeBase64(urlSafe) {
+    let base64 = urlSafe.replace(/-/g, '+').replace(/_/g, '/');
+    // Добавляем padding обратно
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+    return base64;
+  }
+
   async function generateKey() {
     return await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
   async function exportKey(key) {
     const exported = await subtle.exportKey('raw', key);
-    return btoa(String.fromCharCode(...new Uint8Array(exported)));
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(exported)));
+    return toUrlSafeBase64(base64);
   }
 
-  async function importKey(keyBase64) {
-    const keyData = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+  async function importKey(urlSafeBase64) {
+    const base64 = fromUrlSafeBase64(urlSafeBase64);
+    const keyData = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
     return await subtle.importKey('raw', keyData, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
@@ -548,7 +566,7 @@
       document.getElementById('room-link').textContent = url;
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       
-      // ИСПРАВЛЕНО: обновляем URL в адресной строке
+      // Обновляем URL в адресной строке
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
       
       showScreen('room-created');
@@ -635,7 +653,8 @@
       document.getElementById('join-room-id').textContent = roomId;
       showScreen('join');
     } catch (err) {
-      showToast('Неверная ссылка', 'error');
+      console.error('Ошибка обработки ссылки:', err);
+      showToast('Неверная ссылка. Убедитесь, что скопировали её полностью.', 'error');
     }
   });
 
@@ -651,8 +670,6 @@
 
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
-    
-    // ИСПРАВЛЕНО: меняем текст кнопки "Завершить" на "Выйти" для участника
     document.getElementById('end-btn-text').textContent = 'Выйти';
     
     showScreen('chat');
@@ -686,7 +703,6 @@
     }
   });
 
-  // ИСПРАВЛЕНО: разные действия для создателя и участника
   function confirmEnd() {
     const modalTitle = document.getElementById('modal-title');
     const modalText = document.getElementById('modal-text');
@@ -714,10 +730,8 @@
   
   document.getElementById('confirm-end-btn').addEventListener('click', () => {
     if (isCreator) {
-      // Создатель завершает комнату
       socket.emit('endRoom', { roomId: currentRoomId });
     } else {
-      // Участник просто выходит
       socket.disconnect();
       socket = null;
       showScreen('landing');
@@ -727,18 +741,19 @@
   });
 
   document.getElementById('new-room-btn').addEventListener('click', () => {
-    // Сбрасываем всё состояние
-    socket = null;
+    // Полностью сбрасываем состояние
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
     currentRoomId = null;
     encryptionKey = null;
     myNick = '';
     isCreator = false;
     window.encryptionKeyBase64 = null;
     
-    // Очищаем URL
-    window.history.replaceState(null, '', window.location.pathname);
-    
-    location.reload();
+    // Переходим на чистый URL и перезагружаем
+    window.location.href = window.location.pathname;
   });
 
   // Проверка URL при загрузке
@@ -758,7 +773,6 @@
         }).catch((err) => {
           console.error('Ошибка импорта ключа:', err);
           showToast('Ошибка ключа шифрования. Возможно, ссылка устарела или повреждена.', 'error');
-          // Очищаем URL
           window.history.replaceState(null, '', window.location.pathname);
         });
       }
