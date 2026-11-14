@@ -149,6 +149,58 @@
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
   }
+
+  /* Стили для голосовых сообщений */
+  .voice-recording {
+    animation: voice-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes voice-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+  }
+
+  .audio-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .audio-player button {
+    background: rgba(0, 212, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .audio-player button:hover {
+    background: rgba(0, 212, 255, 0.3);
+  }
+  .audio-player .progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .audio-player .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0077ff, #00d4ff);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+  }
+  .audio-player .duration {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -265,6 +317,11 @@
       <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
         <input id="msg-input-1" type="text" placeholder="Написать сообщение..." autocomplete="off"
                class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
+        <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+          </svg>
+        </button>
         <button id="send-btn-1" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
@@ -359,6 +416,11 @@
       <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
         <input id="msg-input-2" type="text" placeholder="Написать сообщение..." autocomplete="off"
                class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
+        <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+          </svg>
+        </button>
         <button id="send-btn-2" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
@@ -433,16 +495,14 @@
     const now = audioContext.currentTime;
 
     if (type === 'incoming') {
-      // Мягкий, приятный "дзынь" (как в современных мессенджерах)
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now); // Нота Ля (A5)
+      osc.frequency.setValueAtTime(880, now);
       osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
       gain.gain.setValueAtTime(0.1, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
       osc.start(now);
       osc.stop(now + 0.15);
     } else if (type === 'outgoing') {
-      // Короткий тихий "клик" отправки
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(600, now);
       gain.gain.setValueAtTime(0.05, now);
@@ -502,6 +562,24 @@
     return new TextDecoder().decode(decrypted);
   }
 
+  // Шифрование бинарных данных (для голосовых сообщений)
+  async function encryptBinary(key, binaryData) {
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv }, key, binaryData);
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return btoa(String.fromCharCode(...combined));
+  }
+
+  async function decryptBinary(key, encryptedBase64) {
+    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return decrypted;
+  }
+
   // ====== Состояние ======
   let socket = null;
   let currentRoomId = null;
@@ -509,6 +587,13 @@
   let myNick = '';
   let isCreator = false;
   let typingTimeout = null;
+
+  // Состояние записи голоса
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let recordingTimer = null;
+  let recordingStartTime = 0;
 
   // ====== Утилиты UI ======
   function showToast(message, type = 'success') {
@@ -538,6 +623,12 @@
     return div.innerHTML;
   }
 
+  function formatDuration(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
   // ====== Чат ======
   function addMessage(nick, text, isSelf, timestamp) {
     const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
@@ -558,6 +649,74 @@
     area.scrollTop = area.scrollHeight;
   }
 
+  function addVoiceMessage(nick, audioData, duration, isSelf, timestamp) {
+    const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
+    const area = document.getElementById(areaId);
+    const msg = document.createElement('div');
+    msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
+    const time = new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const nickColor = isSelf ? 'text-cyan-300' : 'text-blue-300';
+    const msgId = `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    msg.innerHTML = `
+      <div class="flex items-center justify-between mb-1.5 gap-4">
+        <span class="text-xs font-bold ${nickColor}">${escapeHtml(nick)}</span>
+        <span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span>
+      </div>
+      <div class="audio-player">
+        <button id="play-${msgId}" class="flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </button>
+        <div class="progress-bar" id="progress-${msgId}">
+          <div class="progress-fill" id="progress-fill-${msgId}" style="width: 0%"></div>
+        </div>
+        <span class="duration" id="duration-${msgId}">${formatDuration(duration)}</span>
+      </div>
+    `;
+    area.appendChild(msg);
+    area.scrollTop = area.scrollHeight;
+
+    // Создаём аудио элемент
+    const audioBlob = new Blob([audioData], { type: 'audio/webm' });
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    const playBtn = document.getElementById(`play-${msgId}`);
+    const progressFill = document.getElementById(`progress-fill-${msgId}`);
+    const progressBar = document.getElementById(`progress-${msgId}`);
+    let isPlaying = false;
+
+    playBtn.addEventListener('click', () => {
+      if (isPlaying) {
+        audio.pause();
+        playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        isPlaying = false;
+      } else {
+        audio.play();
+        playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+        isPlaying = true;
+      }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      const progress = (audio.currentTime / audio.duration) * 100;
+      progressFill.style.width = `${progress}%`;
+    });
+
+    audio.addEventListener('ended', () => {
+      playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+      progressFill.style.width = '0%';
+      isPlaying = false;
+    });
+
+    progressBar.addEventListener('click', (e) => {
+      const rect = progressBar.getBoundingClientRect();
+      const pos = (e.clientX - rect.left) / rect.width;
+      audio.currentTime = pos * audio.duration;
+    });
+  }
+
   function addSystemMessage(text) {
     const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
     const area = document.getElementById(areaId);
@@ -576,17 +735,89 @@
 
     try {
       const encrypted = await encryptMessage(encryptionKey, text);
-      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: encrypted });
+      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: encrypted, type: 'text' });
       input.value = '';
       socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
-      
-      // ЗВУК: Короткий клик при отправке своего сообщения
       playNotificationSound('outgoing');
-      
     } catch (err) {
       showToast('Ошибка шифрования: ' + err.message, 'error');
       console.error('Ошибка шифрования:', err);
     }
+  }
+
+  // ====== Запись голоса ======
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioArrayBuffer = await audioBlob.arrayBuffer();
+        const audioUint8Array = new Uint8Array(audioArrayBuffer);
+        const duration = (Date.now() - recordingStartTime) / 1000;
+
+        try {
+          const encrypted = await encryptBinary(encryptionKey, audioUint8Array);
+          socket.emit('sendMessage', { 
+            roomId: currentRoomId, 
+            encryptedMessage: encrypted, 
+            type: 'voice',
+            duration: duration
+          });
+          playNotificationSound('outgoing');
+        } catch (err) {
+          showToast('Ошибка шифрования аудио: ' + err.message, 'error');
+          console.error('Ошибка шифрования аудио:', err);
+        }
+
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+      recordingStartTime = Date.now();
+
+      // Визуальная обратная связь
+      const voiceBtn1 = document.getElementById('voice-btn-1');
+      const voiceBtn2 = document.getElementById('voice-btn-2');
+      voiceBtn1.classList.add('voice-recording', 'bg-red-600');
+      voiceBtn2.classList.add('voice-recording', 'bg-red-600');
+
+      // Таймер
+      recordingTimer = setInterval(() => {
+        const elapsed = (Date.now() - recordingStartTime) / 1000;
+        voiceBtn1.title = `Запись: ${formatDuration(elapsed)}`;
+        voiceBtn2.title = `Запись: ${formatDuration(elapsed)}`;
+      }, 100);
+
+      showToast('Запись началась... Отпустите кнопку для отправки');
+    } catch (err) {
+      console.error('Ошибка доступа к микрофону:', err);
+      showToast('Не удалось получить доступ к микрофону', 'error');
+    }
+  }
+
+  function stopRecording() {
+    if (!isRecording || !mediaRecorder) return;
+
+    mediaRecorder.stop();
+    isRecording = false;
+    clearInterval(recordingTimer);
+
+    const voiceBtn1 = document.getElementById('voice-btn-1');
+    const voiceBtn2 = document.getElementById('voice-btn-2');
+    voiceBtn1.classList.remove('voice-recording', 'bg-red-600');
+    voiceBtn2.classList.remove('voice-recording', 'bg-red-600');
+    voiceBtn1.title = 'Голосовое сообщение';
+    voiceBtn2.title = 'Голосовое сообщение';
   }
 
   function handleTyping() {
@@ -608,9 +839,7 @@
       const url = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
       document.getElementById('room-link').textContent = url;
       document.getElementById('room-id-display-1').textContent = currentRoomId;
-      
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
-      
       showScreen('room-created');
       showToast('Комната успешно создана');
     });
@@ -631,10 +860,14 @@
 
     socket.on('message', async (data) => {
       try {
-        const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
-        addMessage(data.nick, decrypted, data.userId === socket.id, data.timestamp);
+        if (data.type === 'voice') {
+          const audioData = await decryptBinary(encryptionKey, data.encryptedMessage);
+          addVoiceMessage(data.nick, audioData, data.duration, data.userId === socket.id, data.timestamp);
+        } else {
+          const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
+          addMessage(data.nick, decrypted, data.userId === socket.id, data.timestamp);
+        }
         
-        // ЗВУК: Мягкий "дзынь" только если сообщение от ДРУГОГО пользователя
         if (data.userId !== socket.id) {
           playNotificationSound('incoming');
         }
@@ -668,7 +901,7 @@
 
   // ====== Обработчики событий ======
   document.getElementById('create-btn').addEventListener('click', async () => {
-    ensureAudioContext(); // Активируем звук при первом взаимодействии
+    ensureAudioContext();
     const nick = document.getElementById('nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
 
@@ -734,6 +967,22 @@
   document.getElementById('msg-input-2').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage(); else handleTyping();
   });
+
+  // Обработчики кнопок микрофона
+  const voiceBtn1 = document.getElementById('voice-btn-1');
+  const voiceBtn2 = document.getElementById('voice-btn-2');
+
+  voiceBtn1.addEventListener('mousedown', startRecording);
+  voiceBtn1.addEventListener('mouseup', stopRecording);
+  voiceBtn1.addEventListener('mouseleave', stopRecording);
+  voiceBtn1.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+  voiceBtn1.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+
+  voiceBtn2.addEventListener('mousedown', startRecording);
+  voiceBtn2.addEventListener('mouseup', stopRecording);
+  voiceBtn2.addEventListener('mouseleave', stopRecording);
+  voiceBtn2.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+  voiceBtn2.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
 
   document.getElementById('copy-btn').addEventListener('click', async () => {
     const link = document.getElementById('room-link').textContent;
