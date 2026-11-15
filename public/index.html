@@ -568,16 +568,35 @@
     typingTimeout = setTimeout(() => socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick }), 2000);
   }
 
-  function initSocket() {
+    function initSocket() {
     if (socket) return;
     socket = io({ 
       transports: ['websocket', 'polling'],
       maxHttpBufferSize: 50e6
     });
     
+    // Если соединение восстановилось (например, после сворачивания приложения)
+    socket.on('connect', () => {
+      if (currentRoomId && myNick) {
+        console.log('Соединение восстановлено. Возвращаемся в комнату...');
+        socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator: isCreator });
+      }
+    });
+
     socket.on('connect_error', (err) => {
       console.error('Ошибка подключения:', err);
       showToast('Ошибка подключения к серверу', 'error');
+    });
+
+    // Обработка ошибки, если комната закрыта
+    socket.on('error', d => {
+      showToast(d.message, 'error');
+      if (d.message.includes('не найдена')) {
+        // Комната реально закрыта, сбрасываем интерфейс и очищаем ссылку
+        window.history.replaceState(null, '', window.location.pathname);
+        currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
+        showScreen('landing');
+      }
     });
 
     socket.on('roomCreated', d => {
@@ -625,7 +644,6 @@
     socket.on('userTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-text').textContent = `${d.nick} печатает`; document.getElementById('typing-indicator').classList.remove('hidden'); } });
     socket.on('userStoppedTyping', d => { if (d.nick !== myNick) document.getElementById('typing-indicator').classList.add('hidden'); });
     socket.on('roomEnded', () => showScreen('ended'));
-    socket.on('error', d => showToast(d.message, 'error'));
   }
 
   document.getElementById('create-btn').onclick = async () => {
