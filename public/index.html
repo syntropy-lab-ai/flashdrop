@@ -113,7 +113,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Завершить
       </button>
     </header>
-    <main class="flex-1 px-4 py-6 max-w-2xl mx-auto w-full flex flex-col">
+    <main class="flex-1 px-2 sm:px-4 py-6 max-w-2xl mx-auto w-full flex flex-col">
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-5 mb-6 animate-slide-up">
         <div class="flex items-center gap-2 mb-3"><span class="text-xl">🔐</span><h2 class="font-bold text-white text-lg">Комната создана</h2></div>
         <p class="text-sm text-[var(--muted)] mb-4">Отправьте эту ссылку собеседникам. Ключ шифрования содержится в ссылке и никогда не попадает на сервер.</p>
@@ -134,16 +134,18 @@
         <span id="room-id-display-1" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
       </div>
       <div id="chat-area-1" class="flex-1 space-y-3 mb-4 overflow-y-auto pr-1 min-h-[250px]"></div>
-      <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
+      
+      <!-- ПАНЕЛЬ ВВОДА 1 (Адаптирована под мобилки) -->
+      <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 shadow-2xl items-center">
         <input type="file" id="file-input-1" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
-        <button id="file-btn-1" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Отправить файл">
+        <button id="file-btn-1" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
         </button>
-        <input id="msg-input-1" type="text" placeholder="Написать сообщение..." autocomplete="off" class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
-        <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение (удерживайте)">
+        <input id="msg-input-1" type="text" placeholder="Сообщение..." autocomplete="off" class="input-field flex-1 min-w-0 bg-transparent border-0 rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-white placeholder-gray-500 text-sm"/>
+        <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Голосовое сообщение (удерживайте)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
         </button>
-        <button id="send-btn-1" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
+        <button id="send-btn-1" class="btn-primary text-white p-2.5 sm:px-4 sm:py-3 rounded-xl flex items-center justify-center flex-shrink-0">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
         </button>
       </div>
@@ -195,7 +197,7 @@
         <span id="end-btn-text">Выйти</span>
       </button>
     </header>
-    <main class="flex-1 px-4 py-4 max-w-2xl mx-auto w-full flex flex-col">
+    <main class="flex-1 px-2 sm:px-4 py-4 max-w-2xl mx-auto w-full flex flex-col">
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
         <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Соединение защищено</span>
         <span id="chat-room-id" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
@@ -205,16 +207,18 @@
         <span id="typing-text">Кто-то печатает</span>
         <div class="flex gap-1 items-center h-3"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
       </div>
-      <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
+      
+      <!-- ПАНЕЛЬ ВВОДА 2 (Адаптирована под мобилки) -->
+      <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 shadow-2xl items-center">
         <input type="file" id="file-input-2" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
-        <button id="file-btn-2" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Отправить файл">
+        <button id="file-btn-2" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
         </button>
-        <input id="msg-input-2" type="text" placeholder="Написать сообщение..." autocomplete="off" class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
-        <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение (удерживайте)">
+        <input id="msg-input-2" type="text" placeholder="Сообщение..." autocomplete="off" class="input-field flex-1 min-w-0 bg-transparent border-0 rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-white placeholder-gray-500 text-sm"/>
+        <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Голосовое сообщение (удерживайте)">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
         </button>
-        <button id="send-btn-2" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
+        <button id="send-btn-2" class="btn-primary text-white p-2.5 sm:px-4 sm:py-3 rounded-xl flex items-center justify-center flex-shrink-0">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
         </button>
       </div>
@@ -253,7 +257,6 @@
 </div>
 
 <script type="module">
-  // 1. РЕГИСТРАЦИЯ SERVICE WORKER ДЛЯ PWA
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
@@ -288,11 +291,10 @@
   function toUrlSafeBase64(b) { return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function fromUrlSafeBase64(u) { let b = u.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4 !== 0) b += '='; return b; }
   
-  // БЕЗОПАСНАЯ КОНВЕРТАЦИЯ В BASE64 (предотвращает переполнение стека)
   function uint8ToBase64(uint8) {
     let binary = '';
     const len = uint8.byteLength;
-    const chunkSize = 0x8000; // 32 КБ
+    const chunkSize = 0x8000;
     for (let i = 0; i < len; i += chunkSize) {
       const chunk = uint8.subarray(i, Math.min(i + chunkSize, len));
       binary += String.fromCharCode.apply(null, chunk);
