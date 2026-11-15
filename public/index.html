@@ -11,205 +11,61 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #05050a;
-    --card: #0f111a;
-    --card-border: #1e2235;
-    --accent: #00d4ff;
-    --text: #f0f2f5;
-    --muted: #8b92a8;
-    --danger: #ff4757;
-    --success: #2ed573;
+    --bg: #05050a; --card: #0f111a; --card-border: #1e2235;
+    --accent: #00d4ff; --text: #f0f2f5; --muted: #8b92a8;
+    --danger: #ff4757; --success: #2ed573;
   }
-
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-  body {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    min-height: 100dvh;
-    overflow-x: hidden;
-  }
-
+  body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; min-height: 100dvh; overflow-x: hidden; }
   .mono { font-family: 'JetBrains Mono', monospace; }
-
-  .bg-glow {
-    position: fixed; top: -20%; left: -10%;
-    width: 60vw; height: 60vw;
-    background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
-    filter: blur(80px); z-index: 0; pointer-events: none;
-    animation: float 15s ease-in-out infinite;
-  }
-  .bg-glow-2 {
-    position: fixed; bottom: -20%; right: -10%;
-    width: 50vw; height: 50vw;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-    filter: blur(80px); z-index: 0; pointer-events: none;
-    animation: float 20s ease-in-out infinite reverse;
-  }
-  @keyframes float {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(30px, -30px); }
-  }
-
+  .bg-glow { position: fixed; top: -20%; left: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%); filter: blur(80px); z-index: 0; pointer-events: none; animation: float 15s ease-in-out infinite; }
+  .bg-glow-2 { position: fixed; bottom: -20%; right: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%); filter: blur(80px); z-index: 0; pointer-events: none; animation: float 20s ease-in-out infinite reverse; }
+  @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, -30px); } }
   .content-layer { position: relative; z-index: 1; }
-
-  @keyframes slide-up {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  .delay-100 { animation-delay: 0.1s; opacity: 0; }
-  .delay-200 { animation-delay: 0.2s; opacity: 0; }
-  .delay-300 { animation-delay: 0.3s; opacity: 0; }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #0077ff 0%, #00d4ff 100%);
-    transition: all 0.3s ease;
-  }
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
-  }
+  .delay-100 { animation-delay: 0.1s; opacity: 0; } .delay-200 { animation-delay: 0.2s; opacity: 0; } .delay-300 { animation-delay: 0.3s; opacity: 0; }
+  .btn-primary { background: linear-gradient(135deg, #0077ff 0%, #00d4ff 100%); transition: all 0.3s ease; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3); }
   .btn-primary:active { transform: translateY(0); }
-
-  @keyframes msg-pop {
-    from { opacity: 0; transform: translateY(10px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .message-bubble {
-    animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    max-width: 85%; word-wrap: break-word;
-  }
-  .message-bubble.self {
-    background: linear-gradient(135deg, rgba(0, 119, 255, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%);
-    border: 1px solid rgba(0, 212, 255, 0.3);
-    margin-left: auto;
-  }
-  .message-bubble.other {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--card-border);
-    margin-right: auto;
-  }
-
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #2d3348; border-radius: 3px; }
-
-  .input-field {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--card-border);
-    transition: all 0.2s ease;
-  }
-  .input-field:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
-    outline: none;
-  }
-
-  .screen { display: none; }
-  .screen.active { display: flex; }
-
-  .toast-container {
-    position: fixed; top: 20px; right: 20px; z-index: 9999;
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .toast {
-    background: rgba(15, 17, 26, 0.95);
-    border: 1px solid var(--card-border);
-    backdrop-filter: blur(10px);
-    padding: 12px 16px; border-radius: 12px;
-    display: flex; align-items: center; gap: 10px;
-    font-size: 14px;
-    animation: slide-in-right 0.3s ease forwards;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  }
-  .toast.error { border-left: 3px solid var(--danger); }
-  .toast.success { border-left: 3px solid var(--success); }
-  @keyframes slide-in-right {
-    from { opacity: 0; transform: translateX(100%); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes fade-out {
-    to { opacity: 0; transform: translateX(100%); }
-  }
-
-  .typing-dot {
-    width: 6px; height: 6px;
-    background: var(--muted);
-    border-radius: 50%;
-    display: inline-block;
-    animation: typing 1.4s infinite ease-in-out both;
-  }
-  .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-  .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-  @keyframes typing {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
-  }
-
-  .voice-recording {
-    animation: voice-pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes voice-pulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
-    50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
-  }
-
-  .audio-player {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    min-width: 200px;
-  }
-  .audio-player button {
-    background: rgba(0, 212, 255, 0.2);
-    border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  .audio-player button:hover {
-    background: rgba(0, 212, 255, 0.3);
-  }
-  .audio-player .progress-bar {
-    flex: 1;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-    overflow: hidden;
-    cursor: pointer;
-    min-width: 80px;
-  }
-  .audio-player .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #0077ff, #00d4ff);
-    border-radius: 2px;
-    transition: width 0.1s linear;
-  }
-  .audio-player .duration {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: 'JetBrains Mono', monospace;
-    flex-shrink: 0;
-  }
+  @keyframes msg-pop { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .message-bubble { animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-width: 85%; word-wrap: break-word; }
+  .message-bubble.self { background: linear-gradient(135deg, rgba(0, 119, 255, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%); border: 1px solid rgba(0, 212, 255, 0.3); margin-left: auto; }
+  .message-bubble.other { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); margin-right: auto; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #2d3348; border-radius: 3px; }
+  .input-field { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--card-border); transition: all 0.2s ease; }
+  .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1); outline: none; }
+  .screen { display: none; } .screen.active { display: flex; }
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+  .toast { background: rgba(15, 17, 26, 0.95); border: 1px solid var(--card-border); backdrop-filter: blur(10px); padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-size: 14px; animation: slide-in-right 0.3s ease forwards; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .toast.error { border-left: 3px solid var(--danger); } .toast.success { border-left: 3px solid var(--success); }
+  @keyframes slide-in-right { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes fade-out { to { opacity: 0; transform: translateX(100%); } }
+  .typing-dot { width: 6px; height: 6px; background: var(--muted); border-radius: 50%; display: inline-block; animation: typing 1.4s infinite ease-in-out both; }
+  .typing-dot:nth-child(1) { animation-delay: -0.32s; } .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+  .voice-recording { animation: voice-pulse 1.5s ease-in-out infinite; }
+  @keyframes voice-pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } }
+  
+  /* Аудио и Файлы */
+  .media-player, .file-card { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 200px; }
+  .media-player button, .file-card .download-btn { background: rgba(0, 212, 255, 0.2); border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+  .media-player button:hover, .file-card .download-btn:hover { background: rgba(0, 212, 255, 0.3); }
+  .progress-bar { flex: 1; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; cursor: pointer; min-width: 80px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #0077ff, #00d4ff); border-radius: 2px; transition: width 0.1s linear; }
+  .duration, .file-size { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+  
+  .file-card { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 10px; gap: 12px; }
+  .file-icon { width: 40px; height: 40px; background: rgba(0, 212, 255, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-info { flex: 1; min-width: 0; }
+  .file-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .image-preview { max-width: 100%; border-radius: 12px; cursor: pointer; transition: transform 0.2s; margin-top: 4px; }
+  .image-preview:hover { transform: scale(1.02); }
 </style>
 </head>
 <body>
-
-<div class="bg-glow"></div>
-<div class="bg-glow-2"></div>
+<div class="bg-glow"></div><div class="bg-glow-2"></div>
 <div class="toast-container" id="toast-container"></div>
-
 <div class="content-layer min-h-screen">
 
   <!-- ЭКРАН 1: ГЛАВНАЯ -->
@@ -217,42 +73,25 @@
     <div class="w-full max-w-md animate-slide-up">
       <div class="text-center mb-10">
         <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-400 mb-6 shadow-2xl" style="box-shadow: 0 0 40px rgba(0, 212, 255, 0.3);">
-          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <h1 class="text-5xl font-bold mb-3 bg-gradient-to-r from-white via-blue-100 to-cyan-200 bg-clip-text text-transparent tracking-tight">FlashDrop</h1>
         <p class="text-base text-[var(--muted)]">Анонимный эфемерный чат со сквозным шифрованием</p>
       </div>
-
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
-        <input id="nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20"
-               class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
-
+        <input id="nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
         <button id="create-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           Создать комнату
         </button>
       </div>
-
       <div class="mt-8 text-center animate-slide-up delay-200">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="h-px bg-[var(--card-border)] flex-1"></div>
-          <span class="text-xs text-[var(--muted)] uppercase tracking-wider">или</span>
-          <div class="h-px bg-[var(--card-border)] flex-1"></div>
-        </div>
-        
+        <div class="flex items-center gap-4 mb-6"><div class="h-px bg-[var(--card-border)] flex-1"></div><span class="text-xs text-[var(--muted)] uppercase tracking-wider">или</span><div class="h-px bg-[var(--card-border)] flex-1"></div></div>
         <label class="block text-sm font-medium text-gray-400 mb-2 ml-1">Присоединиться по ссылке</label>
-        <input id="join-link-input" type="text" placeholder="Вставьте ссылку..."
-               class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-4 text-sm mono"/>
-        <button id="join-btn" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium py-3.5 rounded-xl transition text-base">
-          Войти в комнату
-        </button>
+        <input id="join-link-input" type="text" placeholder="Вставьте ссылку..." class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-4 text-sm mono"/>
+        <button id="join-btn" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium py-3.5 rounded-xl transition text-base">Войти в комнату</button>
       </div>
-
       <div class="flex items-center justify-center gap-6 mt-10 text-xs text-[var(--muted)] animate-slide-up delay-300">
         <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg> E2E Шифрование</span>
         <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Без логов</span>
@@ -265,68 +104,46 @@
     <header class="border-b border-[var(--card-border)] bg-[var(--bg)]/80 backdrop-blur-md px-4 py-4 flex items-center justify-between sticky top-0 z-20">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <span class="font-bold text-lg tracking-tight">FlashDrop</span>
       </div>
       <button id="end-room-btn-1" class="text-sm text-[var(--danger)] hover:text-red-400 transition flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/10">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-        Завершить
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Завершить
       </button>
     </header>
-
     <main class="flex-1 px-4 py-6 max-w-2xl mx-auto w-full flex flex-col">
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-5 mb-6 animate-slide-up">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-xl">🔐</span>
-          <h2 class="font-bold text-white text-lg">Комната создана</h2>
-        </div>
+        <div class="flex items-center gap-2 mb-3"><span class="text-xl">🔐</span><h2 class="font-bold text-white text-lg">Комната создана</h2></div>
         <p class="text-sm text-[var(--muted)] mb-4">Отправьте эту ссылку собеседникам. Ключ шифрования содержится в ссылке и никогда не попадает на сервер.</p>
-
         <div class="bg-black/40 border border-[var(--card-border)] rounded-xl p-3 flex items-center gap-3 group hover:border-[var(--accent)]/50 transition">
           <span id="room-link" class="mono text-xs text-cyan-300 flex-1 break-all select-all"></span>
           <button id="copy-btn" class="flex-shrink-0 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg transition flex items-center gap-1.5 text-sm font-medium">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-            </svg>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
             <span id="copy-text">Копировать</span>
           </button>
         </div>
-
         <div class="mt-4 flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-          <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-          </svg>
+          <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           <p class="text-xs text-amber-200/90 leading-relaxed">Когда создатель закроет вкладку, комната будет <b>безвозвратно удалена</b> из памяти сервера вместе со всей перепиской.</p>
         </div>
       </div>
-
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
-        <span class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span>
-          Зашифровано · <span id="user-count-1" class="text-white font-medium">1</span> участник
-        </span>
+        <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Зашифровано · <span id="user-count-1" class="text-white font-medium">1</span> участник</span>
         <span id="room-id-display-1" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
       </div>
-
       <div id="chat-area-1" class="flex-1 space-y-3 mb-4 overflow-y-auto pr-1 min-h-[250px]"></div>
-
       <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
-        <input id="msg-input-1" type="text" placeholder="Написать сообщение..." autocomplete="off"
-               class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
+        <input type="file" id="file-input-1" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
+        <button id="file-btn-1" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Отправить файл">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        </button>
+        <input id="msg-input-1" type="text" placeholder="Написать сообщение..." autocomplete="off" class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
         <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение (удерживайте)">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
-          </svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
         </button>
         <button id="send-btn-1" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-          </svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
         </button>
       </div>
     </main>
@@ -337,36 +154,26 @@
     <div class="w-full max-w-md animate-slide-up">
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-400 mb-6 shadow-2xl" style="box-shadow: 0 0 40px rgba(0, 212, 255, 0.3);">
-          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <h1 class="text-4xl font-bold mb-3 bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">Добро пожаловать</h1>
         <p class="text-base text-[var(--muted)]">Вы присоединяетесь к комнате <span id="join-room-id" class="mono text-[var(--accent)] font-bold"></span></p>
       </div>
-
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
-        <input id="join-nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20"
-               class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
-
+        <input id="join-nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
         <button id="join-room-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-          </svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
           Войти в комнату
         </button>
       </div>
-
       <div class="mt-6 bg-[var(--card)]/50 border border-[var(--card-border)] rounded-2xl p-4 flex items-start gap-3 animate-slide-up delay-200">
         <div class="w-10 h-10 rounded-full bg-[var(--success)]/10 flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-          </svg>
+          <svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         </div>
         <div>
           <p class="text-sm text-white font-medium mb-1">Сквозное шифрование (E2EE)</p>
-          <p class="text-xs text-[var(--muted)] leading-relaxed">Сообщения шифруются алгоритмом AES-256-GCM прямо в вашем браузере. Сервер передаёт только зашифрованный набор байтов и не может прочитать переписку.</p>
+          <p class="text-xs text-[var(--muted)] leading-relaxed">Сообщения и файлы шифруются алгоритмом AES-256-GCM прямо в вашем браузере.</p>
         </div>
       </div>
     </div>
@@ -377,9 +184,7 @@
     <header class="border-b border-[var(--card-border)] bg-[var(--bg)]/80 backdrop-blur-md px-4 py-4 flex items-center justify-between sticky top-0 z-20">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <div>
           <div class="font-bold text-base tracking-tight">FlashDrop</div>
@@ -387,45 +192,31 @@
         </div>
       </div>
       <button id="end-room-btn-2" class="text-sm text-[var(--danger)] hover:text-red-400 transition flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/10">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         <span id="end-btn-text">Выйти</span>
       </button>
     </header>
-
     <main class="flex-1 px-4 py-4 max-w-2xl mx-auto w-full flex flex-col">
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
-        <span class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span>
-          Соединение защищено
-        </span>
+        <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Соединение защищено</span>
         <span id="chat-room-id" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
       </div>
-
       <div id="chat-area-2" class="flex-1 space-y-3 mb-2 overflow-y-auto pr-1"></div>
-
       <div id="typing-indicator" class="hidden text-xs text-[var(--muted)] mb-2 px-1 h-5 flex items-center gap-1.5">
         <span id="typing-text">Кто-то печатает</span>
-        <div class="flex gap-1 items-center h-3">
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-        </div>
+        <div class="flex gap-1 items-center h-3"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
       </div>
-
       <div class="sticky bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-2 flex gap-2 shadow-2xl">
-        <input id="msg-input-2" type="text" placeholder="Написать сообщение..." autocomplete="off"
-               class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
+        <input type="file" id="file-input-2" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
+        <button id="file-btn-2" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Отправить файл">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        </button>
+        <input id="msg-input-2" type="text" placeholder="Написать сообщение..." autocomplete="off" class="input-field flex-1 bg-transparent border-0 rounded-xl px-4 py-3 text-white placeholder-gray-500 text-sm"/>
         <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white px-3 py-3 rounded-xl transition flex items-center justify-center" title="Голосовое сообщение (удерживайте)">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
-          </svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
         </button>
         <button id="send-btn-2" class="btn-primary text-white px-4 py-3 rounded-xl flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-          </svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
         </button>
       </div>
     </main>
@@ -435,21 +226,16 @@
   <div id="screen-ended" class="screen flex-col items-center justify-center px-4 min-h-screen">
     <div class="text-center animate-slide-up max-w-sm">
       <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-red-500/10 mb-6">
-        <svg class="w-12 h-12 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
+        <svg class="w-12 h-12 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </div>
       <h1 class="text-3xl font-bold mb-3 text-white">Комната закрыта</h1>
       <p class="text-[var(--muted)] mb-8 leading-relaxed">Создатель завершил сессию. Все сообщения и ключи шифрования были безвозвратно удалены из оперативной памяти сервера.</p>
       <button id="new-room-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         Создать новую комнату
       </button>
     </div>
   </div>
-
 </div>
 
 <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
@@ -457,416 +243,236 @@
   <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-6 max-w-sm w-full animate-slide-up shadow-2xl">
     <div class="flex items-center gap-3 mb-4">
       <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-        <svg class="w-5 h-5 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-        </svg>
+        <svg class="w-5 h-5 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
       </div>
       <h3 class="font-bold text-white text-lg" id="modal-title">Завершить комнату?</h3>
     </div>
     <p class="text-sm text-[var(--muted)] mb-6 leading-relaxed" id="modal-text">Вся переписка будет удалена безвозвратно. Участники потеряют доступ к чату. Это действие нельзя отменить.</p>
     <div class="flex gap-3">
       <button id="cancel-end-btn" class="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl transition text-sm font-medium border border-white/10">Отмена</button>
-      <button id="confirm-end-btn" class="flex-1 bg-[var(--danger)] hover:bg-red-500 text-white py-3 rounded-xl transition text-sm font-medium shadow-lg shadow-red-500/20">
-        <span id="confirm-btn-text">Да, завершить</span>
-      </button>
+      <button id="confirm-end-btn" class="flex-1 bg-[var(--danger)] hover:bg-red-500 text-white py-3 rounded-xl transition text-sm font-medium shadow-lg shadow-red-500/20"><span id="confirm-btn-text">Да, завершить</span></button>
     </div>
   </div>
 </div>
 
 <script type="module">
-  // ====== Web Audio API ======
   let audioContext = null;
-
   function ensureAudioContext() {
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
-    }
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') audioContext.resume();
   }
-
   function playNotificationSound(type) {
     ensureAudioContext();
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
-    osc.connect(gain);
-    gain.connect(audioContext.destination);
-
+    osc.connect(gain); gain.connect(audioContext.destination);
     const now = audioContext.currentTime;
-
     if (type === 'incoming') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      osc.start(now);
-      osc.stop(now + 0.15);
-    } else if (type === 'outgoing') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(600, now);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      osc.start(now);
-      osc.stop(now + 0.08);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(880, now); osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+      gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
+    } else {
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(600, now);
+      gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now); osc.stop(now + 0.08);
     }
   }
 
-  // ====== Web Crypto API ======
   const subtle = window.crypto.subtle;
-
-  function toUrlSafeBase64(base64) {
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-
-  function fromUrlSafeBase64(urlSafe) {
-    let base64 = urlSafe.replace(/-/g, '+').replace(/_/g, '/');
-    while (base64.length % 4 !== 0) {
-      base64 += '=';
-    }
-    return base64;
-  }
-
-  async function generateKey() {
-    return await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-  }
-
-  async function exportKey(key) {
-    const exported = await subtle.exportKey('raw', key);
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(exported)));
-    return toUrlSafeBase64(base64);
-  }
-
-  async function importKey(urlSafeBase64) {
-    const base64 = fromUrlSafeBase64(urlSafeBase64);
-    const keyData = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    return await subtle.importKey('raw', keyData, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-  }
-
+  function toUrlSafeBase64(b) { return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function fromUrlSafeBase64(u) { let b = u.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4 !== 0) b += '='; return b; }
+  async function generateKey() { return await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
+  async function exportKey(key) { const e = await subtle.exportKey('raw', key); return toUrlSafeBase64(btoa(String.fromCharCode(...new Uint8Array(e)))); }
+  async function importKey(u) { const b = fromUrlSafeBase64(u); const k = Uint8Array.from(atob(b), c => c.charCodeAt(0)); return await subtle.importKey('raw', k, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
   async function encryptMessage(key, message) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
+    const data = new TextEncoder().encode(message);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
-    const combined = new Uint8Array(iv.length + encrypted.byteLength);
-    combined.set(iv, 0);
-    combined.set(new Uint8Array(encrypted), iv.length);
-    return btoa(String.fromCharCode(...combined));
+    const enc = await subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+    const c = new Uint8Array(iv.length + enc.byteLength); c.set(iv, 0); c.set(new Uint8Array(enc), iv.length);
+    return btoa(String.fromCharCode(...c));
   }
-
-  async function decryptMessage(key, encryptedBase64) {
-    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-    const iv = combined.slice(0, 12);
-    const data = combined.slice(12);
-    const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-    return new TextDecoder().decode(decrypted);
+  async function decryptMessage(key, encB64) {
+    const c = Uint8Array.from(atob(encB64), x => x.charCodeAt(0));
+    return new TextDecoder().decode(await subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, key, c.slice(12)));
   }
-
-  async function encryptBinary(key, binaryData) {
+  async function encryptBinary(key, bin) {
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv }, key, binaryData);
-    const combined = new Uint8Array(iv.length + encrypted.byteLength);
-    combined.set(iv, 0);
-    combined.set(new Uint8Array(encrypted), iv.length);
-    return btoa(String.fromCharCode(...combined));
+    const enc = await subtle.encrypt({ name: 'AES-GCM', iv }, key, bin);
+    const c = new Uint8Array(iv.length + enc.byteLength); c.set(iv, 0); c.set(new Uint8Array(enc), iv.length);
+    return btoa(String.fromCharCode(...c));
+  }
+  async function decryptBinary(key, encB64) {
+    const c = Uint8Array.from(atob(encB64), x => x.charCodeAt(0));
+    return new Uint8Array(await subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, key, c.slice(12)));
   }
 
-  async function decryptBinary(key, encryptedBase64) {
-    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-    const iv = combined.slice(0, 12);
-    const data = combined.slice(12);
-    const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-    return new Uint8Array(decrypted);
+  let socket = null, currentRoomId = null, encryptionKey = null, myNick = '', isCreator = false, typingTimeout = null;
+  let mediaRecorder = null, audioChunks = [], isRecording = false, recordingTimer = null, recordingStartTime = 0;
+
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    const icon = type === 'success' ? '<svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : '<svg class="w-5 h-5 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+    t.innerHTML = `${icon}<span>${msg}</span>`;
+    c.appendChild(t);
+    setTimeout(() => { t.style.animation = 'fade-out 0.3s ease forwards'; setTimeout(() => t.remove(), 300); }, 3000);
+  }
+  function showScreen(name) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + name).classList.add('active'); window.scrollTo(0, 0); }
+  function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function formatDuration(s) { return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`; }
+  function formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  // ====== Состояние ======
-  let socket = null;
-  let currentRoomId = null;
-  let encryptionKey = null;
-  let myNick = '';
-  let isCreator = false;
-  let typingTimeout = null;
-
-  let mediaRecorder = null;
-  let audioChunks = [];
-  let isRecording = false;
-  let recordingTimer = null;
-  let recordingStartTime = 0;
-
-  // ====== Утилиты UI ======
-  function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    const icon = type === 'success' 
-      ? '<svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
-      : '<svg class="w-5 h-5 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
-    toast.innerHTML = `${icon}<span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.style.animation = 'fade-out 0.3s ease forwards';
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
-  }
-
-  function showScreen(name) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-' + name).classList.add('active');
-    window.scrollTo(0, 0);
-  }
-
-  function escapeHtml(s) {
-    const div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
-  }
-
-  function formatDuration(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  // ====== Чат ======
-  function addMessage(nick, text, isSelf, timestamp) {
-    const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
-    const area = document.getElementById(areaId);
+  function addMessage(nick, text, isSelf, ts) {
+    const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
-    const time = new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    const nickColor = isSelf ? 'text-cyan-300' : 'text-blue-300';
-    
-    msg.innerHTML = `
-      <div class="flex items-center justify-between mb-1.5 gap-4">
-        <span class="text-xs font-bold ${nickColor}">${escapeHtml(nick)}</span>
-        <span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span>
-      </div>
-      <p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>
-    `;
-    area.appendChild(msg);
-    area.scrollTop = area.scrollHeight;
+    const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
+    area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addVoiceMessage(nick, audioData, duration, isSelf, timestamp) {
-    const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
-    const area = document.getElementById(areaId);
+  function addVoiceMessage(nick, audioData, duration, isSelf, ts) {
+    const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
+    const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
-    const time = new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    const nickColor = isSelf ? 'text-cyan-300' : 'text-blue-300';
-    const msgId = `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
+      <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
+    area.appendChild(msg); area.scrollTop = area.scrollHeight;
+    const audio = new Audio(URL.createObjectURL(new Blob([audioData], { type: 'audio/webm' })));
+    const btn = document.getElementById(`play-${msgId}`), fill = document.getElementById(`progf-${msgId}`), bar = document.getElementById(`prog-${msgId}`);
+    let playing = false;
+    btn.onclick = () => {
+      if (playing) { audio.pause(); btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; playing = false; }
+      else { audio.play().catch(()=>showToast('Ошибка воспроизведения','error')); btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'; playing = true; }
+    };
+    audio.ontimeupdate = () => { if(audio.duration) fill.style.width = `${(audio.currentTime/audio.duration)*100}%`; };
+    audio.onended = () => { btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; fill.style.width = '0%'; playing = false; };
+    bar.onclick = (e) => { if(audio.duration) audio.currentTime = ((e.clientX - bar.getBoundingClientRect().left) / bar.getBoundingClientRect().width) * audio.duration; };
+  }
+
+  function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts) {
+    const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
+    const msg = document.createElement('div');
+    msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
+    const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     
-    msg.innerHTML = `
-      <div class="flex items-center justify-between mb-1.5 gap-4">
-        <span class="text-xs font-bold ${nickColor}">${escapeHtml(nick)}</span>
-        <span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span>
-      </div>
-      <div class="audio-player">
-        <button id="play-${msgId}" class="flex items-center justify-center">
-          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-        </button>
-        <div class="progress-bar" id="progress-${msgId}">
-          <div class="progress-fill" id="progress-fill-${msgId}" style="width: 0%"></div>
-        </div>
-        <span class="duration" id="duration-${msgId}">${formatDuration(duration)}</span>
-      </div>
-    `;
-    area.appendChild(msg);
-    area.scrollTop = area.scrollHeight;
-
-    const audioBlob = new Blob([audioData], { type: 'audio/webm' });
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    const playBtn = document.getElementById(`play-${msgId}`);
-    const progressFill = document.getElementById(`progress-fill-${msgId}`);
-    const progressBar = document.getElementById(`progress-${msgId}`);
-    let isPlaying = false;
-
-    playBtn.addEventListener('click', () => {
-      if (isPlaying) {
-        audio.pause();
-        playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-        isPlaying = false;
-      } else {
-        audio.play().catch(err => {
-          console.error('Ошибка воспроизведения:', err);
-          showToast('Не удалось воспроизвести аудио', 'error');
-        });
-        playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-        isPlaying = true;
-      }
-    });
-
-    audio.addEventListener('timeupdate', () => {
-      if (audio.duration) {
-        const progress = (audio.currentTime / audio.duration) * 100;
-        progressFill.style.width = `${progress}%`;
-      }
-    });
-
-    audio.addEventListener('ended', () => {
-      playBtn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-      progressFill.style.width = '0%';
-      isPlaying = false;
-    });
-
-    audio.addEventListener('error', () => {
-      showToast('Ошибка загрузки аудио', 'error');
-    });
-
-    progressBar.addEventListener('click', (e) => {
-      const rect = progressBar.getBoundingClientRect();
-      const pos = (e.clientX - rect.left) / rect.width;
-      if (audio.duration) {
-        audio.currentTime = pos * audio.duration;
-      }
-    });
+    if (fileMime && fileMime.startsWith('image/')) {
+      const imgUrl = URL.createObjectURL(new Blob([fileData], { type: fileMime }));
+      msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
+        <img src="${imgUrl}" class="image-preview" alt="${escapeHtml(fileName)}" onclick="window.open(this.src, '_blank')" />
+        <div class="text-[10px] text-gray-500 mt-1 text-right">${escapeHtml(fileName)} · ${formatSize(fileSize)}</div>`;
+    } else {
+      const isDoc = fileMime && (fileMime.includes('pdf') || fileMime.includes('word') || fileMime.includes('text') || fileMime.includes('zip'));
+      const icon = isDoc ? '📄' : '📦';
+      const dlId = `dl-${Date.now()}`;
+      msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
+        <div class="file-card">
+          <div class="file-icon text-xl">${icon}</div>
+          <div class="file-info"><div class="file-name">${escapeHtml(fileName)}</div><div class="file-size">${formatSize(fileSize)}</div></div>
+          <button id="${dlId}" class="download-btn" title="Скачать"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button>
+        </div>`;
+      area.appendChild(msg); area.scrollTop = area.scrollHeight;
+      const blob = new Blob([fileData], { type: fileMime || 'application/octet-stream' });
+      document.getElementById(dlId).onclick = () => {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href);
+      };
+      return; // return early because we already appended
+    }
+    area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
   function addSystemMessage(text) {
-    const areaId = isCreator ? 'chat-area-1' : 'chat-area-2';
-    const area = document.getElementById(areaId);
+    const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = 'text-center text-xs text-[var(--muted)] py-2 animate-slide-up';
     msg.innerHTML = `<span class="bg-white/5 px-3 py-1 rounded-full">${text}</span>`;
-    area.appendChild(msg);
-    area.scrollTop = area.scrollHeight;
+    area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
   async function sendMessage() {
-    const inputId = isCreator ? 'msg-input-1' : 'msg-input-2';
-    const input = document.getElementById(inputId);
+    const input = document.getElementById(isCreator ? 'msg-input-1' : 'msg-input-2');
     const text = input.value.trim();
     if (!text) return;
-
     try {
-      const encrypted = await encryptMessage(encryptionKey, text);
-      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: encrypted, type: 'text' });
-      input.value = '';
-      socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
+      const enc = await encryptMessage(encryptionKey, text);
+      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'text' });
+      input.value = ''; socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
       playNotificationSound('outgoing');
-    } catch (err) {
-      showToast('Ошибка шифрования: ' + err.message, 'error');
-      console.error('Ошибка шифрования:', err);
-    }
+    } catch (err) { showToast('Ошибка шифрования: ' + err.message, 'error'); }
   }
 
-  // ====== Запись голоса ======
-  async function startRecording() {
-    if (isRecording) return;
-    
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100
-        }
-      });
-      
-      // Выбираем поддерживаемый формат
-      let mimeType = 'audio/webm';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'audio/mp4';
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = '';
-        }
-      }
-
-      const options = mimeType ? { mimeType, audioBitsPerSecond: 128000 } : {};
-      mediaRecorder = new MediaRecorder(stream, options);
-      audioChunks = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const duration = (Date.now() - recordingStartTime) / 1000;
-        
-        // Минимальная длительность 0.5 сек
-        if (duration < 0.5) {
-          showToast('Слишком короткая запись', 'error');
-          stream.getTracks().forEach(track => track.stop());
-          return;
-        }
-
-        const audioBlob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
-        const audioArrayBuffer = await audioBlob.arrayBuffer();
-        const audioUint8Array = new Uint8Array(audioArrayBuffer);
-
-        try {
-          const encrypted = await encryptBinary(encryptionKey, audioUint8Array);
-          socket.emit('sendMessage', { 
-            roomId: currentRoomId, 
-            encryptedMessage: encrypted, 
-            type: 'voice',
-            duration: Math.round(duration * 10) / 10
-          });
-          playNotificationSound('outgoing');
-          showToast(`Голосовое отправлено (${formatDuration(duration)})`);
-        } catch (err) {
-          showToast('Ошибка шифрования аудио: ' + err.message, 'error');
-          console.error('Ошибка шифрования аудио:', err);
-        }
-
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.onerror = (err) => {
-        console.error('Ошибка MediaRecorder:', err);
-        showToast('Ошибка записи', 'error');
-        stopRecordingUI();
-      };
-
-      mediaRecorder.start(100); // собираем чанки каждые 100мс
-      isRecording = true;
-      recordingStartTime = Date.now();
-
-      // Визуальная обратная связь
-      const voiceBtn1 = document.getElementById('voice-btn-1');
-      const voiceBtn2 = document.getElementById('voice-btn-2');
-      voiceBtn1.classList.add('voice-recording', 'bg-red-600');
-      voiceBtn2.classList.add('voice-recording', 'bg-red-600');
-
-      recordingTimer = setInterval(() => {
-        const elapsed = (Date.now() - recordingStartTime) / 1000;
-        voiceBtn1.title = `Запись: ${formatDuration(elapsed)}`;
-        voiceBtn2.title = `Запись: ${formatDuration(elapsed)}`;
-      }, 100);
-
-    } catch (err) {
-      console.error('Ошибка доступа к микрофону:', err);
-      showToast('Не удалось получить доступ к микрофону. Проверьте разрешения.', 'error');
-    }
-  }
-
-  function stopRecordingUI() {
-    isRecording = false;
-    clearInterval(recordingTimer);
-
-    const voiceBtn1 = document.getElementById('voice-btn-1');
-    const voiceBtn2 = document.getElementById('voice-btn-2');
-    voiceBtn1.classList.remove('voice-recording', 'bg-red-600');
-    voiceBtn2.classList.remove('voice-recording', 'bg-red-600');
-    voiceBtn1.title = 'Голосовое сообщение (удерживайте)';
-    voiceBtn2.title = 'Голосовое сообщение (удерживайте)';
-  }
-
-  function stopRecording() {
-    if (!isRecording || !mediaRecorder) {
-      stopRecordingUI();
+  async function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Файл слишком большой (макс. 10 МБ)', 'error');
+      event.target.value = '';
       return;
     }
-
-    if (mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
+    showToast(`Шифрование и отправка ${file.name}...`);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      const enc = await encryptBinary(encryptionKey, uint8);
+      socket.emit('sendMessage', {
+        roomId: currentRoomId, encryptedMessage: enc, type: 'file',
+        fileName: file.name, fileSize: file.size, fileMime: file.type
+      });
+      playNotificationSound('outgoing');
+      showToast('Файл отправлен');
+    } catch (err) {
+      showToast('Ошибка отправки файла: ' + err.message, 'error');
     }
+    event.target.value = '';
+  }
+
+  async function startRecording() {
+    if (isRecording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 } });
+      let mime = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported(mime)) mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+      mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 128000 } : {});
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        const dur = (Date.now() - recordingStartTime) / 1000;
+        if (dur < 0.5) { showToast('Слишком короткая запись', 'error'); stream.getTracks().forEach(t => t.stop()); return; }
+        const blob = new Blob(audioChunks, { type: mime || 'audio/webm' });
+        const buf = await blob.arrayBuffer();
+        try {
+          const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
+          socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10 });
+          playNotificationSound('outgoing'); showToast(`Голосовое отправлено (${formatDuration(dur)})`);
+        } catch (err) { showToast('Ошибка шифрования аудио', 'error'); }
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start(100); isRecording = true; recordingStartTime = Date.now();
+      const b1 = document.getElementById('voice-btn-1'), b2 = document.getElementById('voice-btn-2');
+      b1.classList.add('voice-recording', 'bg-red-600'); b2.classList.add('voice-recording', 'bg-red-600');
+      recordingTimer = setInterval(() => {
+        const el = (Date.now() - recordingStartTime) / 1000;
+        b1.title = b2.title = `Запись: ${formatDuration(el)}`;
+      }, 100);
+    } catch (err) { showToast('Нет доступа к микрофону', 'error'); }
+  }
+  function stopRecordingUI() {
+    isRecording = false; clearInterval(recordingTimer);
+    const b1 = document.getElementById('voice-btn-1'), b2 = document.getElementById('voice-btn-2');
+    b1.classList.remove('voice-recording', 'bg-red-600'); b2.classList.remove('voice-recording', 'bg-red-600');
+    b1.title = b2.title = 'Голосовое сообщение (удерживайте)';
+  }
+  function stopRecording() {
+    if (!isRecording || !mediaRecorder) { stopRecordingUI(); return; }
+    if (mediaRecorder.state === 'recording') mediaRecorder.stop();
     stopRecordingUI();
   }
 
@@ -874,282 +480,138 @@
     if (!socket) return;
     socket.emit('typing', { roomId: currentRoomId, nick: myNick });
     clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
-    }, 2000);
+    typingTimeout = setTimeout(() => socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick }), 2000);
   }
 
-  // ====== Инициализация Socket ======
   function initSocket() {
     if (socket) return;
-    
-    // Увеличиваем лимит на клиенте тоже
-    socket = io({
-      transports: ['websocket', 'polling']
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('Ошибка подключения:', err);
-      showToast('Ошибка подключения к серверу', 'error');
-    });
-
-    socket.on('roomCreated', (data) => {
-      currentRoomId = data.roomId;
-      const url = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
-      document.getElementById('room-link').textContent = url;
+    socket = io({ transports: ['websocket', 'polling'] });
+    socket.on('connect_error', () => showToast('Ошибка подключения к серверу', 'error'));
+    socket.on('roomCreated', d => {
+      currentRoomId = d.roomId;
+      document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
-      showScreen('room-created');
-      showToast('Комната успешно создана');
+      showScreen('room-created'); showToast('Комната успешно создана');
     });
-
-    socket.on('userJoined', (data) => {
-      const countEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if (isCreator) countEl.textContent = data.userCount;
-      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участник`;
-      addSystemMessage(`👤 ${data.nick} присоединился`);
+    socket.on('userJoined', d => {
+      const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
+      if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
+      addSystemMessage(`👤 ${d.nick} присоединился`);
     });
-
-    socket.on('userLeft', (data) => {
-      const countEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if (isCreator) countEl.textContent = data.userCount;
-      else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${data.userCount} участник`;
-      addSystemMessage(`👋 ${data.nick} покинул комнату`);
+    socket.on('userLeft', d => {
+      const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
+      if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
+      addSystemMessage(`👋 ${d.nick} покинул комнату`);
     });
-
-    socket.on('message', async (data) => {
-  // ОТЛАДКА: смотрим что приходит
-  console.log('📨 Получено сообщение:', {
-    type: data.type,
-    duration: data.duration,
-    encryptedLength: data.encryptedMessage?.length,
-    userId: data.userId,
-    isSelf: data.userId === socket.id
-  });
-  
-  try {
-    const isSelf = data.userId === socket.id;
-    
-    // Явная проверка типа
-    if (data.type === 'voice') {
-      console.log('🎤 Голосовое сообщение, расшифровываю...');
-      const audioData = await decryptBinary(encryptionKey, data.encryptedMessage);
-      console.log('✅ Аудио расшифровано, размер:', audioData.length, 'байт');
-      const duration = data.duration || 0;
-      addVoiceMessage(data.nick, audioData, duration, isSelf, data.timestamp);
-    } else {
-      console.log('💬 Текстовое сообщение, расшифровываю...');
-      const decrypted = await decryptMessage(encryptionKey, data.encryptedMessage);
-      console.log('✅ Текст расшифрован:', decrypted.substring(0, 50));
-      addMessage(data.nick, decrypted, isSelf, data.timestamp);
-    }
-    
-    if (!isSelf) {
-      playNotificationSound('incoming');
-    }
-  } catch (err) {
-    console.error('❌ Ошибка обработки сообщения:', err);
-    showToast('Ошибка получения сообщения', 'error');
-  }
-});
-
-    socket.on('userTyping', (data) => {
-      if (data.nick !== myNick) {
-        document.getElementById('typing-text').textContent = `${data.nick} печатает`;
-        document.getElementById('typing-indicator').classList.remove('hidden');
-      }
+    socket.on('message', async d => {
+      try {
+        const isSelf = d.userId === socket.id;
+        if (d.type === 'voice') {
+          const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
+          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp);
+        } else if (d.type === 'file') {
+          const fileData = await decryptBinary(encryptionKey, d.encryptedMessage);
+          addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp);
+        } else {
+          const text = await decryptMessage(encryptionKey, d.encryptedMessage);
+          addMessage(d.nick, text, isSelf, d.timestamp);
+        }
+        if (!isSelf) playNotificationSound('incoming');
+      } catch (err) { console.error('Ошибка обработки:', err); showToast('Ошибка получения сообщения', 'error'); }
     });
-
-    socket.on('userStoppedTyping', (data) => {
-      if (data.nick !== myNick) {
-        document.getElementById('typing-indicator').classList.add('hidden');
-      }
-    });
-
-    socket.on('roomEnded', () => {
-      showScreen('ended');
-    });
-
-    socket.on('error', (data) => {
-      showToast(data.message, 'error');
-    });
+    socket.on('userTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-text').textContent = `${d.nick} печатает`; document.getElementById('typing-indicator').classList.remove('hidden'); } });
+    socket.on('userStoppedTyping', d => { if (d.nick !== myNick) document.getElementById('typing-indicator').classList.add('hidden'); });
+    socket.on('roomEnded', () => showScreen('ended'));
+    socket.on('error', d => showToast(d.message, 'error'));
   }
 
-  // ====== Обработчики ======
-  document.getElementById('create-btn').addEventListener('click', async () => {
+  document.getElementById('create-btn').onclick = async () => {
     ensureAudioContext();
     const nick = document.getElementById('nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
-
-    myNick = nick;
-    isCreator = true;
-    encryptionKey = await generateKey();
-    window.encryptionKeyBase64 = await exportKey(encryptionKey);
-
-    initSocket();
-    socket.emit('createRoom', { nick });
-  });
-
-  document.getElementById('join-btn').addEventListener('click', async () => {
+    myNick = nick; isCreator = true;
+    encryptionKey = await generateKey(); window.encryptionKeyBase64 = await exportKey(encryptionKey);
+    initSocket(); socket.emit('createRoom', { nick });
+  };
+  document.getElementById('join-btn').onclick = async () => {
     ensureAudioContext();
     const link = document.getElementById('join-link-input').value.trim();
-    if (!link) { showToast('Вставьте ссылку комнаты', 'error'); return; }
-
+    if (!link) { showToast('Вставьте ссылку', 'error'); return; }
     try {
-      const url = new URL(link);
-      const hash = url.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const roomId = params.get('room');
-      const keyBase64 = params.get('key');
-
-      if (!roomId || !keyBase64) { showToast('Неверный формат ссылки', 'error'); return; }
-
-      currentRoomId = roomId;
-      window.encryptionKeyBase64 = keyBase64;
-      encryptionKey = await importKey(keyBase64);
-
-      document.getElementById('join-room-id').textContent = roomId;
-      showScreen('join');
-    } catch (err) {
-      console.error('Ошибка обработки ссылки:', err);
-      showToast('Неверная ссылка. Убедитесь, что скопировали её полностью.', 'error');
-    }
-  });
-
-  document.getElementById('join-room-btn').addEventListener('click', () => {
+      const url = new URL(link); const p = new URLSearchParams(url.hash.substring(1));
+      if (!p.get('room') || !p.get('key')) { showToast('Неверный формат', 'error'); return; }
+      currentRoomId = p.get('room'); window.encryptionKeyBase64 = p.get('key');
+      encryptionKey = await importKey(window.encryptionKeyBase64);
+      document.getElementById('join-room-id').textContent = currentRoomId; showScreen('join');
+    } catch { showToast('Неверная ссылка', 'error'); }
+  };
+  document.getElementById('join-room-btn').onclick = () => {
     ensureAudioContext();
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
-
-    myNick = nick;
-    isCreator = false;
-
-    initSocket();
-    socket.emit('joinRoom', { roomId: currentRoomId, nick });
-
+    myNick = nick; isCreator = false;
+    initSocket(); socket.emit('joinRoom', { roomId: currentRoomId, nick });
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
     document.getElementById('end-btn-text').textContent = 'Выйти';
-    
     showScreen('chat');
-  });
+  };
 
-  document.getElementById('send-btn-1').addEventListener('click', sendMessage);
-  document.getElementById('send-btn-2').addEventListener('click', sendMessage);
+  document.getElementById('send-btn-1').onclick = sendMessage;
+  document.getElementById('send-btn-2').onclick = sendMessage;
+  document.getElementById('msg-input-1').onkeypress = e => { if (e.key === 'Enter') sendMessage(); else handleTyping(); };
+  document.getElementById('msg-input-2').onkeypress = e => { if (e.key === 'Enter') sendMessage(); else handleTyping(); };
 
-  document.getElementById('msg-input-1').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage(); else handleTyping();
-  });
-  document.getElementById('msg-input-2').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage(); else handleTyping();
-  });
+  document.getElementById('file-btn-1').onclick = () => document.getElementById('file-input-1').click();
+  document.getElementById('file-btn-2').onclick = () => document.getElementById('file-input-2').click();
+  document.getElementById('file-input-1').onchange = handleFileSelect;
+  document.getElementById('file-input-2').onchange = handleFileSelect;
 
-  // Обработчики кнопок микрофона
-  const voiceBtn1 = document.getElementById('voice-btn-1');
-  const voiceBtn2 = document.getElementById('voice-btn-2');
+  const vb1 = document.getElementById('voice-btn-1'), vb2 = document.getElementById('voice-btn-2');
+  vb1.onmousedown = vb2.onmousedown = startRecording;
+  vb1.onmouseup = vb2.onmouseup = vb1.onmouseleave = vb2.onmouseleave = stopRecording;
+  vb1.ontouchstart = vb2.ontouchstart = e => { e.preventDefault(); startRecording(); };
+  vb1.ontouchend = vb2.ontouchend = e => { e.preventDefault(); stopRecording(); };
 
-  voiceBtn1.addEventListener('mousedown', startRecording);
-  voiceBtn1.addEventListener('mouseup', stopRecording);
-  voiceBtn1.addEventListener('mouseleave', stopRecording);
-  voiceBtn1.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
-  voiceBtn1.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
-
-  voiceBtn2.addEventListener('mousedown', startRecording);
-  voiceBtn2.addEventListener('mouseup', stopRecording);
-  voiceBtn2.addEventListener('mouseleave', stopRecording);
-  voiceBtn2.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
-  voiceBtn2.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
-
-  document.getElementById('copy-btn').addEventListener('click', async () => {
-    const link = document.getElementById('room-link').textContent;
+  document.getElementById('copy-btn').onclick = async () => {
     try {
-      await navigator.clipboard.writeText(link);
-      const txt = document.getElementById('copy-text');
-      const btn = document.getElementById('copy-btn');
-      txt.textContent = 'Скопировано!';
-      btn.classList.add('bg-[var(--success)]/20', 'text-[var(--success)]');
-      showToast('Ссылка скопирована в буфер обмена');
-      setTimeout(() => {
-        txt.textContent = 'Копировать';
-        btn.classList.remove('bg-[var(--success)]/20', 'text-[var(--success)]');
-      }, 2000);
-    } catch (err) {
-      showToast('Не удалось скопировать', 'error');
-    }
-  });
+      await navigator.clipboard.writeText(document.getElementById('room-link').textContent);
+      const t = document.getElementById('copy-text'), b = document.getElementById('copy-btn');
+      t.textContent = 'Скопировано!'; b.classList.add('bg-[var(--success)]/20', 'text-[var(--success)]');
+      showToast('Ссылка скопирована');
+      setTimeout(() => { t.textContent = 'Копировать'; b.classList.remove('bg-[var(--success)]/20', 'text-[var(--success)]'); }, 2000);
+    } catch { showToast('Не удалось скопировать', 'error'); }
+  };
 
   function confirmEnd() {
-    const modalTitle = document.getElementById('modal-title');
-    const modalText = document.getElementById('modal-text');
-    const confirmBtnText = document.getElementById('confirm-btn-text');
-    
-    if (isCreator) {
-      modalTitle.textContent = 'Завершить комнату?';
-      modalText.textContent = 'Вся переписка будет удалена безвозвратно. Участники потеряют доступ к чату. Это действие нельзя отменить.';
-      confirmBtnText.textContent = 'Да, завершить';
-    } else {
-      modalTitle.textContent = 'Выйти из комнаты?';
-      modalText.textContent = 'Вы покинете чат. Переписка останется доступной для других участников.';
-      confirmBtnText.textContent = 'Да, выйти';
-    }
-    
+    document.getElementById('modal-title').textContent = isCreator ? 'Завершить комнату?' : 'Выйти из комнаты?';
+    document.getElementById('modal-text').textContent = isCreator ? 'Вся переписка будет удалена безвозвратно.' : 'Вы покинете чат. Переписка останется для других.';
+    document.getElementById('confirm-btn-text').textContent = isCreator ? 'Да, завершить' : 'Да, выйти';
     document.getElementById('modal').classList.remove('hidden');
   }
-
-  document.getElementById('end-room-btn-1').addEventListener('click', confirmEnd);
-  document.getElementById('end-room-btn-2').addEventListener('click', confirmEnd);
-  
-  document.getElementById('cancel-end-btn').addEventListener('click', () => {
+  document.getElementById('end-room-btn-1').onclick = confirmEnd;
+  document.getElementById('end-room-btn-2').onclick = confirmEnd;
+  document.getElementById('cancel-end-btn').onclick = () => document.getElementById('modal').classList.add('hidden');
+  document.getElementById('confirm-end-btn').onclick = () => {
+    if (isCreator) socket.emit('endRoom', { roomId: currentRoomId });
+    else { socket.disconnect(); socket = null; showScreen('landing'); showToast('Вы вышли'); }
     document.getElementById('modal').classList.add('hidden');
-  });
-  
-  document.getElementById('confirm-end-btn').addEventListener('click', () => {
-    if (isCreator) {
-      socket.emit('endRoom', { roomId: currentRoomId });
-    } else {
-      socket.disconnect();
-      socket = null;
-      showScreen('landing');
-      showToast('Вы вышли из комнаты');
-    }
-    document.getElementById('modal').classList.add('hidden');
-  });
-
-  document.getElementById('new-room-btn').addEventListener('click', () => {
-    if (socket) {
-      socket.disconnect();
-      socket = null;
-    }
-    currentRoomId = null;
-    encryptionKey = null;
-    myNick = '';
-    isCreator = false;
-    window.encryptionKeyBase64 = null;
-    
+  };
+  document.getElementById('new-room-btn').onclick = () => {
+    if (socket) { socket.disconnect(); socket = null; }
+    currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
     window.location.href = window.location.pathname;
-  });
+  };
 
-  window.addEventListener('load', () => {
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-      const params = new URLSearchParams(hash);
-      const roomId = params.get('room');
-      const keyBase64 = params.get('key');
-      if (roomId && keyBase64) {
-        currentRoomId = roomId;
-        window.encryptionKeyBase64 = keyBase64;
-        importKey(keyBase64).then(key => {
-          encryptionKey = key;
-          document.getElementById('join-room-id').textContent = roomId;
-          showScreen('join');
-        }).catch((err) => {
-          console.error('Ошибка импорта ключа:', err);
-          showToast('Ошибка ключа шифрования. Возможно, ссылка устарела или повреждена.', 'error');
-          window.history.replaceState(null, '', window.location.pathname);
-        });
-      }
+  window.onload = () => {
+    const p = new URLSearchParams(window.location.hash.substring(1));
+    if (p.get('room') && p.get('key')) {
+      currentRoomId = p.get('room'); window.encryptionKeyBase64 = p.get('key');
+      importKey(window.encryptionKeyBase64).then(k => { encryptionKey = k; document.getElementById('join-room-id').textContent = currentRoomId; showScreen('join'); })
+        .catch(() => { showToast('Ошибка ключа', 'error'); window.history.replaceState(null, '', window.location.pathname); });
     }
-  });
+  };
 </script>
 </body>
 </html>
