@@ -725,9 +725,17 @@
     else { socket.disconnect(); socket = null; showScreen('landing'); showToast('Вы вышли'); }
     document.getElementById('modal').classList.add('hidden');
   };
-  document.getElementById('new-room-btn').onclick = () => {
+    document.getElementById('new-room-btn').onclick = () => {
     if (socket) { socket.disconnect(); socket = null; }
     currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
+    
+    // Очищаем память от старых файлов и аудио
+    document.querySelectorAll('audio, img').forEach(el => {
+      if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src);
+    });
+    
+    document.getElementById('chat-area-1').innerHTML = '';
+    document.getElementById('chat-area-2').innerHTML = '';
     window.location.href = window.location.pathname;
   };
 
