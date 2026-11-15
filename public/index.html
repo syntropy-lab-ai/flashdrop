@@ -272,8 +272,21 @@
   const subtle = window.crypto.subtle;
   function toUrlSafeBase64(b) { return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function fromUrlSafeBase64(u) { let b = u.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4 !== 0) b += '='; return b; }
+  
+  // БЕЗОПАСНАЯ КОНВЕРТАЦИЯ В BASE64 (предотвращает переполнение стека)
+  function uint8ToBase64(uint8) {
+    let binary = '';
+    const len = uint8.byteLength;
+    const chunkSize = 0x8000; // 32 КБ
+    for (let i = 0; i < len; i += chunkSize) {
+      const chunk = uint8.subarray(i, Math.min(i + chunkSize, len));
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binary);
+  }
+
   async function generateKey() { return await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
-  async function exportKey(key) { const e = await subtle.exportKey('raw', key); return toUrlSafeBase64(btoa(String.fromCharCode(...new Uint8Array(e)))); }
+  async function exportKey(key) { const e = await subtle.exportKey('raw', key); return toUrlSafeBase64(uint8ToBase64(new Uint8Array(e))); }
   async function importKey(u) { const b = fromUrlSafeBase64(u); const k = Uint8Array.from(atob(b), c => c.charCodeAt(0)); return await subtle.importKey('raw', k, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
   
   // Оптимизированное шифрование для больших данных
@@ -282,7 +295,7 @@
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const enc = await subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
     const c = new Uint8Array(iv.length + enc.byteLength); c.set(iv, 0); c.set(new Uint8Array(enc), iv.length);
-    return btoa(String.fromCharCode(...c));
+    return uint8ToBase64(c);
   }
   async function decryptMessage(key, encB64) {
     const c = Uint8Array.from(atob(encB64), x => x.charCodeAt(0));
@@ -296,7 +309,7 @@
     const enc = await subtle.encrypt({ name: 'AES-GCM', iv }, key, bin);
     const c = new Uint8Array(iv.length + enc.byteLength); c.set(iv, 0); c.set(new Uint8Array(enc), iv.length);
     console.log('✅ Зашифровано, размер:', c.length, 'байт');
-    return btoa(String.fromCharCode(...c));
+    return uint8ToBase64(c);
   }
   async function decryptBinary(key, encB64) {
     console.log('🔓 Расшифровка данных, размер base64:', encB64.length, 'символов');
@@ -412,8 +425,9 @@
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-    if (file.size > 40 * 1024 * 1024) {
-      showToast('Файл слишком большой (макс. 40 МБ)', 'error');
+    // Снижено до 35 МБ, так как base64 добавляет ~33% к размеру
+    if (file.size > 35 * 1024 * 1024) {
+      showToast('Файл слишком большой (макс. 35 МБ)', 'error');
       event.target.value = '';
       return;
     }
@@ -498,7 +512,6 @@
 
   function initSocket() {
     if (socket) return;
-    // УВЕЛИЧЕН ЛИМИТ НА КЛИЕНТЕ
     socket = io({ 
       transports: ['websocket', 'polling'],
       maxHttpBufferSize: 50e6 // 50 MB
