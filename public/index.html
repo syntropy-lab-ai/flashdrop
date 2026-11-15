@@ -588,17 +588,22 @@
       showToast('Ошибка подключения к серверу', 'error');
     });
 
-    // Обработка ошибки, если комната закрыта
+        // Обработка ошибки, если комната закрыта
     socket.on('error', d => {
       showToast(d.message, 'error');
       if (d.message.includes('не найдена')) {
-        // Комната реально закрыта, сбрасываем интерфейс и очищаем ссылку
+        // Комната реально закрыта, сбрасываем интерфейс и ОЧИЩАЕМ экран
         window.history.replaceState(null, '', window.location.pathname);
         currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
+        
+        // Очищаем чаты от старых сообщений
+        document.getElementById('chat-area-1').innerHTML = '';
+        document.getElementById('chat-area-2').innerHTML = '';
+        
         showScreen('landing');
       }
     });
-
+      
     socket.on('roomCreated', d => {
       currentRoomId = d.roomId;
       document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
