@@ -12,7 +12,10 @@ const app = express();
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  },
   maxHttpBufferSize: 50e6 // 50 MB
 });
 
@@ -20,12 +23,13 @@ app.use(cors());
 app.use(express.static(join(__dirname, 'public')));
 
 const rooms = new Map();
-const disconnectTimers = new Map(); // Таймеры для отключившихся создателей
+const disconnectTimers = new Map();
 
 function generateRoomId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
-  for (let i = 0; i < 4; i++) {
+  // ИЗМЕНЕНИЕ: Генерируем 6 символов вместо 4, чтобы избежать совпадений
+  for (let i = 0; i < 6; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
@@ -56,9 +60,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Если возвращается создатель, отменяем таймер удаления
     if (isCreator) {
-      room.creator = socket.id; // Обновляем ID создателя на новый
+      room.creator = socket.id;
       if (disconnectTimers.has(roomId)) {
         clearTimeout(disconnectTimers.get(roomId));
         disconnectTimers.delete(roomId);
@@ -73,6 +76,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sendMessage', (data) => {
+    // ИЗМЕНЕНИЕ: Добавлен fileMime для голосовых
     const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime } = data;
     const room = rooms.get(roomId);
     if (!room) return;
@@ -125,7 +129,6 @@ io.on('connection', (socket) => {
         room.users.delete(socket.id);
         
         if (room.creator === socket.id) {
-          // Создатель отключился — даем 30 секунд на возвращение
           console.log(`Создатель отключился от ${roomId}. Ждем 30 секунд...`);
           const timer = setTimeout(() => {
             if (rooms.has(roomId)) {
