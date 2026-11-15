@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>FlashDrop — Анонимный чат</title>
 
-<!-- Мета-теги и манифест для PWA -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#05050a">
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
@@ -135,7 +134,6 @@
       </div>
       <div id="chat-area-1" class="flex-1 space-y-3 mb-4 overflow-y-auto pr-1 min-h-[250px]"></div>
       
-      <!-- ПАНЕЛЬ ВВОДА 1 (Адаптирована под мобилки) -->
       <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 shadow-2xl items-center">
         <input type="file" id="file-input-1" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
         <button id="file-btn-1" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
@@ -208,7 +206,6 @@
         <div class="flex gap-1 items-center h-3"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
       </div>
       
-      <!-- ПАНЕЛЬ ВВОДА 2 (Адаптирована под мобилки) -->
       <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 shadow-2xl items-center">
         <input type="file" id="file-input-2" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
         <button id="file-btn-2" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
@@ -365,7 +362,8 @@
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addVoiceMessage(nick, audioData, duration, isSelf, ts) {
+  // ИЗМЕНЕНИЕ: Добавлен параметр fileMime
+  function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const msg = document.createElement('div');
@@ -375,7 +373,9 @@
       <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     
-    const audio = new Audio(URL.createObjectURL(new Blob([audioData], { type: 'audio/webm' })));
+    // ИЗМЕНЕНИЕ: Используем переданный MIME-тип (для iOS)
+    const mimeType = fileMime || 'audio/webm';
+    const audio = new Audio(URL.createObjectURL(new Blob([audioData], { type: mimeType })));
     const btn = document.getElementById(`play-${msgId}`), fill = document.getElementById(`progf-${msgId}`), bar = document.getElementById(`prog-${msgId}`);
     let playing = false;
 
@@ -527,7 +527,14 @@
         try {
           const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
           console.log('📤 Отправка голосового через Socket.io, размер base64:', enc.length, 'символов');
-          socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10 });
+          // ИЗМЕНЕНИЕ: Передаем fileMime на сервер
+          socket.emit('sendMessage', { 
+            roomId: currentRoomId, 
+            encryptedMessage: enc, 
+            type: 'voice', 
+            duration: Math.round(dur * 10) / 10,
+            fileMime: mime || 'audio/webm'
+          });
           playNotificationSound('outgoing'); showToast(`Голосовое отправлено (${formatDuration(dur)})`);
         } catch (err) {
           console.error('❌ Ошибка шифрования аудио:', err);
@@ -568,14 +575,13 @@
     typingTimeout = setTimeout(() => socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick }), 2000);
   }
 
-    function initSocket() {
+  function initSocket() {
     if (socket) return;
     socket = io({ 
       transports: ['websocket', 'polling'],
       maxHttpBufferSize: 50e6
     });
     
-    // Если соединение восстановилось (например, после сворачивания приложения)
     socket.on('connect', () => {
       if (currentRoomId && myNick) {
         console.log('Соединение восстановлено. Возвращаемся в комнату...');
@@ -588,22 +594,20 @@
       showToast('Ошибка подключения к серверу', 'error');
     });
 
-        // Обработка ошибки, если комната закрыта
     socket.on('error', d => {
       showToast(d.message, 'error');
       if (d.message.includes('не найдена')) {
-        // Комната реально закрыта, сбрасываем интерфейс и ОЧИЩАЕМ экран
         window.history.replaceState(null, '', window.location.pathname);
         currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
         
-        // Очищаем чаты от старых сообщений
+        // Очищаем чаты
         document.getElementById('chat-area-1').innerHTML = '';
         document.getElementById('chat-area-2').innerHTML = '';
         
         showScreen('landing');
       }
     });
-      
+
     socket.on('roomCreated', d => {
       currentRoomId = d.roomId;
       document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
@@ -630,7 +634,8 @@
         if (d.type === 'voice') {
           console.log('🎤 Получено голосовое, размер base64:', d.encryptedMessage?.length, 'символов');
           const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp);
+          // ИЗМЕНЕНИЕ: Передаем fileMime из сообщения
+          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime);
         } else if (d.type === 'file') {
           console.log('📎 Получен файл:', d.fileName, 'размер:', d.fileSize, 'байт');
           const fileData = await decryptBinary(encryptionKey, d.encryptedMessage);
@@ -647,7 +652,7 @@
     });
 
     socket.on('userTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-text').textContent = `${d.nick} печатает`; document.getElementById('typing-indicator').classList.remove('hidden'); } });
-    socket.on('userStoppedTyping', d => { if (d.nick !== myNick) document.getElementById('typing-indicator').classList.add('hidden'); });
+    socket.on('userStoppedTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-indicator').classList.add('hidden'); } });
     socket.on('roomEnded', () => showScreen('ended'));
   }
 
@@ -671,13 +676,12 @@
       document.getElementById('join-room-id').textContent = currentRoomId; showScreen('join');
     } catch { showToast('Неверная ссылка', 'error'); }
   };
-    document.getElementById('join-room-btn').onclick = () => {
+  document.getElementById('join-room-btn').onclick = () => {
     ensureAudioContext();
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = false;
     initSocket(); 
-    // Передаем isCreator: false
     socket.emit('joinRoom', { roomId: currentRoomId, nick, isCreator: false });
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
@@ -725,11 +729,10 @@
     else { socket.disconnect(); socket = null; showScreen('landing'); showToast('Вы вышли'); }
     document.getElementById('modal').classList.add('hidden');
   };
-    document.getElementById('new-room-btn').onclick = () => {
+  document.getElementById('new-room-btn').onclick = () => {
     if (socket) { socket.disconnect(); socket = null; }
     currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
     
-    // Очищаем память от старых файлов и аудио
     document.querySelectorAll('audio, img').forEach(el => {
       if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src);
     });
