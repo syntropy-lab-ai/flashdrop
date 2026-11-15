@@ -11,19 +11,18 @@ const __dirname = dirname(__filename);
 const app = express();
 const httpServer = createServer(app);
 
-// Увеличиваем лимит размера сообщений для голосовых (10 МБ)
+// Лимит 15 МБ для файлов (оптимально для бесплатного Render)
 const io = new Server(httpServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
   },
-  maxHttpBufferSize: 10e6
+  maxHttpBufferSize: 15e6 
 });
 
 app.use(cors());
 app.use(express.static(join(__dirname, 'public')));
 
-// Хранилище комнат ТОЛЬКО в оперативной памяти
 const rooms = new Map();
 
 function generateRoomId() {
@@ -41,45 +40,34 @@ io.on('connection', (socket) => {
   socket.on('createRoom', (data) => {
     const { nick } = data;
     const roomId = generateRoomId();
-
     rooms.set(roomId, {
       id: roomId,
       creator: socket.id,
       users: new Map([[socket.id, { id: socket.id, nick }]]),
       createdAt: Date.now()
     });
-
     socket.join(roomId);
     socket.emit('roomCreated', { roomId });
-
     console.log(`Комната создана: ${roomId}, создатель: ${nick}`);
   });
 
   socket.on('joinRoom', (data) => {
     const { roomId, nick } = data;
     const room = rooms.get(roomId);
-
     if (!room) {
       socket.emit('error', { message: 'Комната не найдена или уже закрыта' });
       return;
     }
-
     room.users.set(socket.id, { id: socket.id, nick });
     socket.join(roomId);
-
-    io.to(roomId).emit('userJoined', {
-      nick,
-      userCount: room.users.size
-    });
-
+    io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
     console.log(`${nick} присоединился к комнате ${roomId}`);
   });
 
-  // ИСПРАВЛЕНО: берём type и duration и передаём их дальше
+  // ИСПРАВЛЕНО: прокидываем все возможные поля сообщения
   socket.on('sendMessage', (data) => {
-    const { roomId, encryptedMessage, type = 'text', duration = 0 } = data;
+    const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime } = data;
     const room = rooms.get(roomId);
-
     if (!room) return;
 
     const user = room.users.get(socket.id);
@@ -91,6 +79,9 @@ io.on('connection', (socket) => {
       encryptedMessage,
       type,
       duration,
+      fileName,
+      fileSize,
+      fileMime,
       timestamp: Date.now()
     });
   });
@@ -108,9 +99,7 @@ io.on('connection', (socket) => {
   socket.on('endRoom', (data) => {
     const { roomId } = data;
     const room = rooms.get(roomId);
-
-    if (!room) return;
-    if (room.creator !== socket.id) return;
+    if (!room || room.creator !== socket.id) return;
 
     io.to(roomId).emit('roomEnded');
     rooms.delete(roomId);
@@ -119,21 +108,16 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Пользователь отключился:', socket.id);
-
     for (const [roomId, room] of rooms.entries()) {
       if (room.users.has(socket.id)) {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
-
         if (room.creator === socket.id) {
           io.to(roomId).emit('roomEnded');
           rooms.delete(roomId);
           console.log(`Комната ${roomId} закрыта (создатель вышел)`);
         } else {
-          io.to(roomId).emit('userLeft', {
-            nick: user.nick,
-            userCount: room.users.size
-          });
+          io.to(roomId).emit('userLeft', { nick: user.nick, userCount: room.users.size });
         }
         break;
       }
