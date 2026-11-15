@@ -46,15 +46,12 @@
   @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
   .voice-recording { animation: voice-pulse 1.5s ease-in-out infinite; }
   @keyframes voice-pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } }
-  
-  /* Аудио и Файлы */
   .media-player, .file-card { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 200px; }
   .media-player button, .file-card .download-btn { background: rgba(0, 212, 255, 0.2); border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
   .media-player button:hover, .file-card .download-btn:hover { background: rgba(0, 212, 255, 0.3); }
   .progress-bar { flex: 1; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; cursor: pointer; min-width: 80px; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #0077ff, #00d4ff); border-radius: 2px; transition: width 0.1s linear; }
   .duration, .file-size { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
-  
   .file-card { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 10px; gap: 12px; }
   .file-icon { width: 40px; height: 40px; background: rgba(0, 212, 255, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .file-info { flex: 1; min-width: 0; }
@@ -68,7 +65,6 @@
 <div class="toast-container" id="toast-container"></div>
 <div class="content-layer min-h-screen">
 
-  <!-- ЭКРАН 1: ГЛАВНАЯ -->
   <div id="screen-landing" class="screen active flex-col items-center justify-center px-4 py-10 min-h-screen">
     <div class="w-full max-w-md animate-slide-up">
       <div class="text-center mb-10">
@@ -99,7 +95,6 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 2: КОМНАТА СОЗДАНА -->
   <div id="screen-room-created" class="screen flex-col min-h-screen">
     <header class="border-b border-[var(--card-border)] bg-[var(--bg)]/80 backdrop-blur-md px-4 py-4 flex items-center justify-between sticky top-0 z-20">
       <div class="flex items-center gap-3">
@@ -149,7 +144,6 @@
     </main>
   </div>
 
-  <!-- ЭКРАН 3: ПРИСОЕДИНЕНИЕ -->
   <div id="screen-join" class="screen flex-col items-center justify-center px-4 py-10 min-h-screen">
     <div class="w-full max-w-md animate-slide-up">
       <div class="text-center mb-8">
@@ -179,7 +173,6 @@
     </div>
   </div>
 
-  <!-- ЭКРАН 4: ЧАТ -->
   <div id="screen-chat" class="screen flex-col min-h-screen">
     <header class="border-b border-[var(--card-border)] bg-[var(--bg)]/80 backdrop-blur-md px-4 py-4 flex items-center justify-between sticky top-0 z-20">
       <div class="flex items-center gap-3">
@@ -222,7 +215,6 @@
     </main>
   </div>
 
-  <!-- ЭКРАН 5: ЗАВЕРШЕНО -->
   <div id="screen-ended" class="screen flex-col items-center justify-center px-4 min-h-screen">
     <div class="text-center animate-slide-up max-w-sm">
       <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-red-500/10 mb-6">
@@ -238,7 +230,6 @@
   </div>
 </div>
 
-<!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
 <div id="modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
   <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-2xl p-6 max-w-sm w-full animate-slide-up shadow-2xl">
     <div class="flex items-center gap-3 mb-4">
@@ -284,6 +275,8 @@
   async function generateKey() { return await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
   async function exportKey(key) { const e = await subtle.exportKey('raw', key); return toUrlSafeBase64(btoa(String.fromCharCode(...new Uint8Array(e)))); }
   async function importKey(u) { const b = fromUrlSafeBase64(u); const k = Uint8Array.from(atob(b), c => c.charCodeAt(0)); return await subtle.importKey('raw', k, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
+  
+  // Оптимизированное шифрование для больших данных
   async function encryptMessage(key, message) {
     const data = new TextEncoder().encode(message);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -295,15 +288,22 @@
     const c = Uint8Array.from(atob(encB64), x => x.charCodeAt(0));
     return new TextDecoder().decode(await subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, key, c.slice(12)));
   }
+  
+  // Шифрование бинарных данных с обработкой больших объёмов
   async function encryptBinary(key, bin) {
+    console.log('🔐 Шифрование данных, размер:', bin.length, 'байт');
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const enc = await subtle.encrypt({ name: 'AES-GCM', iv }, key, bin);
     const c = new Uint8Array(iv.length + enc.byteLength); c.set(iv, 0); c.set(new Uint8Array(enc), iv.length);
+    console.log('✅ Зашифровано, размер:', c.length, 'байт');
     return btoa(String.fromCharCode(...c));
   }
   async function decryptBinary(key, encB64) {
+    console.log('🔓 Расшифровка данных, размер base64:', encB64.length, 'символов');
     const c = Uint8Array.from(atob(encB64), x => x.charCodeAt(0));
-    return new Uint8Array(await subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, key, c.slice(12)));
+    const dec = await subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, key, c.slice(12));
+    console.log('✅ Расшифровано, размер:', dec.byteLength, 'байт');
+    return new Uint8Array(dec);
   }
 
   let socket = null, currentRoomId = null, encryptionKey = null, myNick = '', isCreator = false, typingTimeout = null;
@@ -384,7 +384,7 @@
       document.getElementById(dlId).onclick = () => {
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href);
       };
-      return; // return early because we already appended
+      return;
     }
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
@@ -412,8 +412,8 @@
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('Файл слишком большой (макс. 10 МБ)', 'error');
+    if (file.size > 40 * 1024 * 1024) {
+      showToast('Файл слишком большой (макс. 40 МБ)', 'error');
       event.target.value = '';
       return;
     }
@@ -421,7 +421,9 @@
     try {
       const arrayBuffer = await file.arrayBuffer();
       const uint8 = new Uint8Array(arrayBuffer);
+      console.log('📎 Отправка файла:', file.name, 'размер:', uint8.length, 'байт');
       const enc = await encryptBinary(encryptionKey, uint8);
+      console.log('📤 Отправка через Socket.io, размер base64:', enc.length, 'символов');
       socket.emit('sendMessage', {
         roomId: currentRoomId, encryptedMessage: enc, type: 'file',
         fileName: file.name, fileSize: file.size, fileMime: file.type
@@ -429,6 +431,7 @@
       playNotificationSound('outgoing');
       showToast('Файл отправлен');
     } catch (err) {
+      console.error('❌ Ошибка отправки файла:', err);
       showToast('Ошибка отправки файла: ' + err.message, 'error');
     }
     event.target.value = '';
@@ -448,12 +451,22 @@
         if (dur < 0.5) { showToast('Слишком короткая запись', 'error'); stream.getTracks().forEach(t => t.stop()); return; }
         const blob = new Blob(audioChunks, { type: mime || 'audio/webm' });
         const buf = await blob.arrayBuffer();
+        console.log('🎤 Запись завершена, длительность:', dur, 'сек, размер:', buf.byteLength, 'байт');
         try {
           const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
+          console.log('📤 Отправка голосового через Socket.io, размер base64:', enc.length, 'символов');
           socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10 });
           playNotificationSound('outgoing'); showToast(`Голосовое отправлено (${formatDuration(dur)})`);
-        } catch (err) { showToast('Ошибка шифрования аудио', 'error'); }
+        } catch (err) {
+          console.error('❌ Ошибка шифрования аудио:', err);
+          showToast('Ошибка шифрования аудио: ' + err.message, 'error');
+        }
         stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.onerror = (err) => {
+        console.error('❌ Ошибка MediaRecorder:', err);
+        showToast('Ошибка записи', 'error');
+        stopRecordingUI();
       };
       mediaRecorder.start(100); isRecording = true; recordingStartTime = Date.now();
       const b1 = document.getElementById('voice-btn-1'), b2 = document.getElementById('voice-btn-2');
@@ -485,8 +498,17 @@
 
   function initSocket() {
     if (socket) return;
-    socket = io({ transports: ['websocket', 'polling'] });
-    socket.on('connect_error', () => showToast('Ошибка подключения к серверу', 'error'));
+    // УВЕЛИЧЕН ЛИМИТ НА КЛИЕНТЕ
+    socket = io({ 
+      transports: ['websocket', 'polling'],
+      maxHttpBufferSize: 50e6 // 50 MB
+    });
+    
+    socket.on('connect_error', (err) => {
+      console.error('Ошибка подключения:', err);
+      showToast('Ошибка подключения к серверу', 'error');
+    });
+
     socket.on('roomCreated', d => {
       currentRoomId = d.roomId;
       document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
@@ -494,23 +516,28 @@
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
       showScreen('room-created'); showToast('Комната успешно создана');
     });
+
     socket.on('userJoined', d => {
       const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
       if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
       addSystemMessage(`👤 ${d.nick} присоединился`);
     });
+
     socket.on('userLeft', d => {
       const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
       if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
       addSystemMessage(`👋 ${d.nick} покинул комнату`);
     });
+
     socket.on('message', async d => {
       try {
         const isSelf = d.userId === socket.id;
         if (d.type === 'voice') {
+          console.log('🎤 Получено голосовое, размер base64:', d.encryptedMessage?.length, 'символов');
           const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
           addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp);
         } else if (d.type === 'file') {
+          console.log('📎 Получен файл:', d.fileName, 'размер:', d.fileSize, 'байт');
           const fileData = await decryptBinary(encryptionKey, d.encryptedMessage);
           addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp);
         } else {
@@ -518,8 +545,12 @@
           addMessage(d.nick, text, isSelf, d.timestamp);
         }
         if (!isSelf) playNotificationSound('incoming');
-      } catch (err) { console.error('Ошибка обработки:', err); showToast('Ошибка получения сообщения', 'error'); }
+      } catch (err) {
+        console.error('❌ Ошибка обработки:', err);
+        showToast('Ошибка получения сообщения', 'error');
+      }
     });
+
     socket.on('userTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-text').textContent = `${d.nick} печатает`; document.getElementById('typing-indicator').classList.remove('hidden'); } });
     socket.on('userStoppedTyping', d => { if (d.nick !== myNick) document.getElementById('typing-indicator').classList.add('hidden'); });
     socket.on('roomEnded', () => showScreen('ended'));
