@@ -33,11 +33,18 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Перехват запросов (сначала ищем в кэше, если нет — идем в сеть)
 self.addEventListener('fetch', (event) => {
-  // Не кэшируем WebSocket соединения (Socket.io)
   if (event.request.url.includes('/socket.io/')) return;
 
+  // Для HTML страниц всегда пробуем загрузить свежую версию из сети
+  if (event.request.mode === 'navigate' || event.request.url.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Остальное (картинки, скрипты) берем из кэша, если нет — из сети
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
