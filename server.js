@@ -11,13 +11,13 @@ const __dirname = dirname(__filename);
 const app = express();
 const httpServer = createServer(app);
 
-// Лимит 15 МБ для файлов (оптимально для бесплатного Render)
+// Увеличен лимит до 50 МБ для длинных голосовых и файлов
 const io = new Server(httpServer, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
   },
-  maxHttpBufferSize: 15e6 
+  maxHttpBufferSize: 50e6 // 50 MB
 });
 
 app.use(cors());
@@ -64,7 +64,6 @@ io.on('connection', (socket) => {
     console.log(`${nick} присоединился к комнате ${roomId}`);
   });
 
-  // ИСПРАВЛЕНО: прокидываем все возможные поля сообщения
   socket.on('sendMessage', (data) => {
     const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime } = data;
     const room = rooms.get(roomId);
