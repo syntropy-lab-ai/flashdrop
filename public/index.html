@@ -4,9 +4,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>FlashDrop — Анонимный чат</title>
+
+<!-- Мета-теги и манифест для PWA -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#05050a">
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="/socket.io/socket.io.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -250,16 +253,15 @@
 </div>
 
 <script type="module">
-    // Регистрация PWA Service Worker
+  // 1. РЕГИСТРАЦИЯ SERVICE WORKER ДЛЯ PWA
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then((registration) => {
-        console.log('Service Worker зарегистрирован:', registration.scope);
-      }).catch((error) => {
-        console.log('Ошибка регистрации Service Worker:', error);
-      });
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW зарегистрирован:', reg.scope))
+        .catch(err => console.log('Ошибка SW:', err));
     });
   }
+
   let audioContext = null;
   function ensureAudioContext() {
     if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -302,7 +304,6 @@
   async function exportKey(key) { const e = await subtle.exportKey('raw', key); return toUrlSafeBase64(uint8ToBase64(new Uint8Array(e))); }
   async function importKey(u) { const b = fromUrlSafeBase64(u); const k = Uint8Array.from(atob(b), c => c.charCodeAt(0)); return await subtle.importKey('raw', k, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
   
-  // Оптимизированное шифрование для больших данных
   async function encryptMessage(key, message) {
     const data = new TextEncoder().encode(message);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -315,7 +316,6 @@
     return new TextDecoder().decode(await subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, key, c.slice(12)));
   }
   
-  // Шифрование бинарных данных с обработкой больших объёмов
   async function encryptBinary(key, bin) {
     console.log('🔐 Шифрование данных, размер:', bin.length, 'байт');
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -363,7 +363,7 @@
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-    function addVoiceMessage(nick, audioData, duration, isSelf, ts) {
+  function addVoiceMessage(nick, audioData, duration, isSelf, ts) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const msg = document.createElement('div');
@@ -377,17 +377,14 @@
     const btn = document.getElementById(`play-${msgId}`), fill = document.getElementById(`progf-${msgId}`), bar = document.getElementById(`prog-${msgId}`);
     let playing = false;
 
-    // 1. Безопасное получение длительности (если Infinity, берем переданную duration)
     const getDuration = () => (audio.duration && isFinite(audio.duration)) ? audio.duration : duration;
 
-    // 2. Хак для принудительного вычисления длительности WebM файла
     audio.onloadedmetadata = () => {
       if (audio.duration === Infinity) {
-        audio.currentTime = 1e101; // Прыгаем в конец
+        audio.currentTime = 1e101;
         const onTimeUpdateHack = () => {
           audio.ontimeupdate = null;
-          audio.currentTime = 0; // Возвращаемся в начало
-          // Восстанавливаем нормальный обработчик
+          audio.currentTime = 0;
           audio.ontimeupdate = () => {
             const dur = getDuration();
             if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`;
@@ -397,7 +394,6 @@
       }
     };
 
-    // Обновление прогресс-бара
     audio.ontimeupdate = () => {
       const dur = getDuration();
       if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`;
@@ -421,7 +417,6 @@
       playing = false; 
     };
 
-    // 3. Перемотка по клику с использованием безопасной длительности
     bar.onclick = (e) => { 
       const dur = getDuration();
       if (dur > 0) {
@@ -487,7 +482,6 @@
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-    // Снижено до 35 МБ, так как base64 добавляет ~33% к размеру
     if (file.size > 35 * 1024 * 1024) {
       showToast('Файл слишком большой (макс. 35 МБ)', 'error');
       event.target.value = '';
@@ -576,7 +570,7 @@
     if (socket) return;
     socket = io({ 
       transports: ['websocket', 'polling'],
-      maxHttpBufferSize: 50e6 // 50 MB
+      maxHttpBufferSize: 50e6
     });
     
     socket.on('connect_error', (err) => {
