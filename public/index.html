@@ -350,7 +350,7 @@
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addVoiceMessage(nick, audioData, duration, isSelf, ts) {
+    function addVoiceMessage(nick, audioData, duration, isSelf, ts) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const msg = document.createElement('div');
@@ -359,16 +359,65 @@
     msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
       <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
+    
     const audio = new Audio(URL.createObjectURL(new Blob([audioData], { type: 'audio/webm' })));
     const btn = document.getElementById(`play-${msgId}`), fill = document.getElementById(`progf-${msgId}`), bar = document.getElementById(`prog-${msgId}`);
     let playing = false;
-    btn.onclick = () => {
-      if (playing) { audio.pause(); btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; playing = false; }
-      else { audio.play().catch(()=>showToast('Ошибка воспроизведения','error')); btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'; playing = true; }
+
+    // 1. Безопасное получение длительности (если Infinity, берем переданную duration)
+    const getDuration = () => (audio.duration && isFinite(audio.duration)) ? audio.duration : duration;
+
+    // 2. Хак для принудительного вычисления длительности WebM файла
+    audio.onloadedmetadata = () => {
+      if (audio.duration === Infinity) {
+        audio.currentTime = 1e101; // Прыгаем в конец
+        const onTimeUpdateHack = () => {
+          audio.ontimeupdate = null;
+          audio.currentTime = 0; // Возвращаемся в начало
+          // Восстанавливаем нормальный обработчик
+          audio.ontimeupdate = () => {
+            const dur = getDuration();
+            if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`;
+          };
+        };
+        audio.ontimeupdate = onTimeUpdateHack;
+      }
     };
-    audio.ontimeupdate = () => { if(audio.duration) fill.style.width = `${(audio.currentTime/audio.duration)*100}%`; };
-    audio.onended = () => { btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; fill.style.width = '0%'; playing = false; };
-    bar.onclick = (e) => { if(audio.duration) audio.currentTime = ((e.clientX - bar.getBoundingClientRect().left) / bar.getBoundingClientRect().width) * audio.duration; };
+
+    // Обновление прогресс-бара
+    audio.ontimeupdate = () => {
+      const dur = getDuration();
+      if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`;
+    };
+
+    btn.onclick = () => {
+      if (playing) { 
+        audio.pause(); 
+        btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; 
+        playing = false; 
+      } else { 
+        audio.play().catch(()=>showToast('Ошибка воспроизведения','error')); 
+        btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'; 
+        playing = true; 
+      }
+    };
+
+    audio.onended = () => { 
+      btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; 
+      fill.style.width = '0%'; 
+      playing = false; 
+    };
+
+    // 3. Перемотка по клику с использованием безопасной длительности
+    bar.onclick = (e) => { 
+      const dur = getDuration();
+      if (dur > 0) {
+        const rect = bar.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        audio.currentTime = percent * dur; 
+        fill.style.width = `${percent * 100}%`;
+      }
+    };
   }
 
   function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts) {
