@@ -666,12 +666,14 @@
       document.getElementById('join-room-id').textContent = currentRoomId; showScreen('join');
     } catch { showToast('Неверная ссылка', 'error'); }
   };
-  document.getElementById('join-room-btn').onclick = () => {
+    document.getElementById('join-room-btn').onclick = () => {
     ensureAudioContext();
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = false;
-    initSocket(); socket.emit('joinRoom', { roomId: currentRoomId, nick });
+    initSocket(); 
+    // Передаем isCreator: false
+    socket.emit('joinRoom', { roomId: currentRoomId, nick, isCreator: false });
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
     document.getElementById('end-btn-text').textContent = 'Выйти';
