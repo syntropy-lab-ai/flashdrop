@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import crypto from 'crypto'; // Для генерации токенов
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,10 +13,7 @@ const app = express();
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  },
+  cors: { origin: '*', methods: ['GET', 'POST'] },
   maxHttpBufferSize: 50e6 // 50 MB
 });
 
@@ -24,11 +22,14 @@ app.use(express.static(join(__dirname, 'public')));
 
 const rooms = new Map();
 const disconnectTimers = new Map();
+const validTokens = new Set(); // Хранилище токенов в памяти
+
+// Берем пароль из переменной окружения (или используем 'admin123' для локальных тестов)
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123';
 
 function generateRoomId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
-  // ИЗМЕНЕНИЕ: Генерируем 6 символов вместо 4, чтобы избежать совпадений
   for (let i = 0; i < 6; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -38,7 +39,33 @@ function generateRoomId() {
 io.on('connection', (socket) => {
   console.log('Пользователь подключился:', socket.id);
 
+  // АВТОРИЗАЦИЯ
+  socket.on('auth', (data) => {
+    const { password, token } = data;
+
+    // 1. Проверка по токену (если пользователь уже заходил)
+    if (token && validTokens.has(token)) {
+      socket.authenticated = true;
+      socket.token = token;
+      socket.emit('authSuccess', { token });
+      return;
+    }
+
+    // 2. Проверка по паролю
+    if (password === ACCESS_PASSWORD) {
+      const newToken = crypto.randomBytes(32).toString('hex');
+      validTokens.add(newToken);
+      socket.authenticated = true;
+      socket.token = newToken;
+      socket.emit('authSuccess', { token: newToken });
+      console.log('Успешная авторизация, выдан токен');
+    } else {
+      socket.emit('authError', { message: 'Неверный код доступа' });
+    }
+  });
+
   socket.on('createRoom', (data) => {
+    if (!socket.authenticated) return; // Защита
     const { nick } = data;
     const roomId = generateRoomId();
     rooms.set(roomId, {
@@ -49,10 +76,10 @@ io.on('connection', (socket) => {
     });
     socket.join(roomId);
     socket.emit('roomCreated', { roomId });
-    console.log(`Комната создана: ${roomId}, создатель: ${nick}`);
   });
 
   socket.on('joinRoom', (data) => {
+    if (!socket.authenticated) return; // Защита
     const { roomId, nick, isCreator } = data;
     const room = rooms.get(roomId);
     if (!room) {
@@ -65,18 +92,16 @@ io.on('connection', (socket) => {
       if (disconnectTimers.has(roomId)) {
         clearTimeout(disconnectTimers.get(roomId));
         disconnectTimers.delete(roomId);
-        console.log(`Создатель вернулся в комнату ${roomId}`);
       }
     }
 
     room.users.set(socket.id, { id: socket.id, nick });
     socket.join(roomId);
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
-    console.log(`${nick} присоединился к комнате ${roomId}`);
   });
 
   socket.on('sendMessage', (data) => {
-    // ИЗМЕНЕНИЕ: Добавлен fileMime для голосовых
+    if (!socket.authenticated) return;
     const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime } = data;
     const room = rooms.get(roomId);
     if (!room) return;
@@ -98,16 +123,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing', (data) => {
-    const { roomId, nick } = data;
-    socket.to(roomId).emit('userTyping', { nick });
+    if (!socket.authenticated) return;
+    socket.to(data.roomId).emit('userTyping', { nick: data.nick });
   });
 
   socket.on('stopTyping', (data) => {
-    const { roomId, nick } = data;
-    socket.to(roomId).emit('userStoppedTyping', { nick });
+    if (!socket.authenticated) return;
+    socket.to(data.roomId).emit('userStoppedTyping', { nick: data.nick });
   });
 
   socket.on('endRoom', (data) => {
+    if (!socket.authenticated) return;
     const { roomId } = data;
     const room = rooms.get(roomId);
     if (!room || room.creator !== socket.id) return;
@@ -118,23 +144,20 @@ io.on('connection', (socket) => {
       clearTimeout(disconnectTimers.get(roomId));
       disconnectTimers.delete(roomId);
     }
-    console.log(`Комната ${roomId} закрыта вручную`);
   });
 
   socket.on('disconnect', () => {
-    console.log('Пользователь отключился:', socket.id);
+    // ... (код дисконнекта и таймеров остается без изменений)
     for (const [roomId, room] of rooms.entries()) {
       if (room.users.has(socket.id)) {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
         
         if (room.creator === socket.id) {
-          console.log(`Создатель отключился от ${roomId}. Ждем 30 секунд...`);
           const timer = setTimeout(() => {
             if (rooms.has(roomId)) {
               io.to(roomId).emit('roomEnded');
               rooms.delete(roomId);
-              console.log(`Комната ${roomId} удалена (создатель не вернулся)`);
             }
           }, 30000);
           disconnectTimers.set(roomId, timer);
