@@ -392,7 +392,7 @@
   let currentReplyTo = null;
   let isRestoringSession = false;
   let isEphemeralMode = false;
-  let isSocketReady = false; // <-- НОВАЯ ПЕРЕМЕННАЯ ДЛЯ ЗАЩИТЫ ОТ ОБРЫВА
+  let isSocketReady = false; 
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -414,12 +414,24 @@
   lightbox.addEventListener('click', closeLightbox);
   lightboxClose.addEventListener('click', closeLightbox);
 
-  // Проверяем статус при возвращении на вкладку
-  window.addEventListener('focus', () => {
-    if (!socket || !socket.connected) {
-      showToast('Восстановление соединения...', 'success');
-    }
-  });
+  // ФУНКЦИЯ ОЖИДАНИЯ СОЕДИНЕНИЯ
+  async function waitForSocket() {
+    if (isSocketReady) return;
+    
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        if (isSocketReady) {
+          clearInterval(interval);
+          resolve();
+        } else if (attempts >= 15) { // Ждем максимум 15 секунд
+          clearInterval(interval);
+          reject(new Error('Timeout'));
+        }
+        attempts++;
+      }, 1000);
+    });
+  }
 
   function initColorPickers() {
     const savedColor = localStorage.getItem('flashdrop_color') || '#00d4ff';
@@ -729,13 +741,16 @@
   }
 
   async function sendMessage() {
-    if (!isSocketReady) {
-      showToast('Подождите, восстанавливаем соединение...', 'error');
-      return;
-    }
     const input = document.getElementById(isCreator ? 'msg-input-1' : 'msg-input-2');
     const text = input.value.trim();
     if (!text) return;
+
+    if (!isSocketReady) {
+      showToast('Восстановление соединения... Подождите.', 'success');
+      try { await waitForSocket(); } 
+      catch (e) { showToast('Соединение не восстановлено.', 'error'); return; }
+    }
+
     try {
       const enc = await encryptMessage(encryptionKey, text);
       const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo };
@@ -749,14 +764,16 @@
   }
 
   async function handleFileSelect(event) {
-    if (!isSocketReady) {
-      showToast('Подождите, восстанавливаем соединение...', 'error');
-      event.target.value = '';
-      return;
-    }
     const file = event.target.files[0];
     if (!file) return;
     if (file.size > 35 * 1024 * 1024) { showToast('Файл слишком большой (макс. 35 МБ)', 'error'); event.target.value = ''; return; }
+
+    if (!isSocketReady) {
+      showToast('Восстановление соединения... Подождите.', 'success');
+      try { await waitForSocket(); } 
+      catch (e) { showToast('Соединение не восстановлено. Попробуйте еще раз.', 'error'); event.target.value = ''; return; }
+    }
+
     showToast(`Шифрование и отправка ${file.name}...`);
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -773,11 +790,14 @@
   }
 
   async function startRecording() {
-    if (!isSocketReady) {
-      showToast('Подождите, восстанавливаем соединение...', 'error');
-      return;
-    }
     if (isRecording) return;
+    
+    if (!isSocketReady) {
+      showToast('Восстановление соединения...', 'success');
+      try { await waitForSocket(); } 
+      catch (e) { showToast('Соединение не восстановлено.', 'error'); return; }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 } });
       let mime = 'audio/webm';
@@ -788,6 +808,13 @@
       mediaRecorder.onstop = async () => {
         const dur = (Date.now() - recordingStartTime) / 1000;
         if (dur < 0.5) { showToast('Слишком короткая запись', 'error'); stream.getTracks().forEach(t => t.stop()); return; }
+        
+        if (!isSocketReady) {
+          showToast('Восстановление соединения...', 'success');
+          try { await waitForSocket(); } 
+          catch (e) { showToast('Соединение не восстановлено.', 'error'); stream.getTracks().forEach(t => t.stop()); return; }
+        }
+
         const blob = new Blob(audioChunks, { type: mime || 'audio/webm' });
         const buf = await blob.arrayBuffer();
         try {
@@ -885,7 +912,7 @@
             
             showScreen(isCreator ? 'room-created' : 'chat');
             showToast('Сессия восстановлена');
-            isSocketReady = true; // <-- ГОТОВ К ОТПРАВКЕ
+            isSocketReady = true;
           }).catch(() => {
             isRestoringSession = false;
             clearSession();
@@ -905,11 +932,11 @@
           encryptionKey = k; 
           document.getElementById('join-room-id').textContent = currentRoomId; 
           showScreen('join'); 
-          isSocketReady = true; // <-- ГОТОВ К ОТПРАВКЕ
+          isSocketReady = true; 
         }).catch(() => { showToast('Ошибка ключа', 'error'); window.history.replaceState(null, '', window.location.pathname); showScreen('landing'); });
       } else {
         showScreen('landing');
-        isSocketReady = true; // <-- ГОТОВ К ОТПРАВКЕ
+        isSocketReady = true;
       }
     });
 
@@ -944,7 +971,7 @@
       }));
 
       showScreen('room-created'); showToast('Комната успешно создана');
-      isSocketReady = true; // <-- ГОТОВ К ОТПРАВКЕ
+      isSocketReady = true;
     });
 
     socket.on('userJoined', d => {
