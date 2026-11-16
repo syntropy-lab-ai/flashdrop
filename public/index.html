@@ -71,8 +71,6 @@
   .reply-quote { background: rgba(0, 0, 0, 0.3); border-left: 3px solid; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
   .reply-quote .nick { font-weight: 600; font-size: 10px; margin-bottom: 2px; }
   .reply-quote .text { color: #a0a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  
-  /* Стили для исчезающих сообщений */
   .ephemeral-active { color: #ff4757 !important; background-color: rgba(255, 71, 87, 0.15) !important; border-color: rgba(255, 71, 87, 0.3) !important; }
 </style>
 </head>
@@ -158,7 +156,6 @@
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
         <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Зашифровано · <span id="user-count-1" class="text-white font-medium">1</span> участник</span>
         <div class="flex items-center gap-2">
-          <!-- Кнопка исчезающих сообщений -->
           <button id="timer-btn-1" class="p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition text-gray-400" title="Исчезающие сообщения (30 сек)">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </button>
@@ -237,7 +234,6 @@
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
         <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Соединение защищено</span>
         <div class="flex items-center gap-2">
-          <!-- Кнопка исчезающих сообщений -->
           <button id="timer-btn-2" class="p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition text-gray-400" title="Исчезающие сообщения (30 сек)">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </button>
@@ -381,7 +377,7 @@
   let chatHistory = [];
   let currentReplyTo = null;
   let isRestoringSession = false;
-  let isEphemeralMode = false; // Режим исчезающих сообщений
+  let isEphemeralMode = false;
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -473,7 +469,18 @@
     btn.onclick = cancelReply;
   });
 
-  function attachReplyListeners(el, msgData) {
+  function attachReplyListeners(el, msgData, isEphemeral = false) {
+    if (isEphemeral) {
+      el.addEventListener('dblclick', (e) => { e.preventDefault(); showToast('Нельзя отвечать на исчезающее сообщение', 'error'); });
+      let touchTimer;
+      el.addEventListener('touchstart', (e) => {
+        touchTimer = setTimeout(() => { showToast('Нельзя отвечать на исчезающее сообщение', 'error'); if (navigator.vibrate) navigator.vibrate([50, 50, 50]); }, 500);
+      }, { passive: true });
+      el.addEventListener('touchend', () => clearTimeout(touchTimer));
+      el.addEventListener('touchmove', () => clearTimeout(touchTimer));
+      return;
+    }
+
     el.addEventListener('dblclick', (e) => {
       e.preventDefault();
       if (window.getSelection().toString().length > 0) return;
@@ -495,7 +502,7 @@
     if (!expiresIn) return;
     setTimeout(() => {
       el.classList.add('destroying');
-      setTimeout(() => el.remove(), 500); // Ждем окончания CSS-анимации
+      setTimeout(() => el.remove(), 500);
     }, expiresIn);
   }
 
@@ -515,7 +522,7 @@
       chatHistory = JSON.parse(savedHistory);
       chatHistory.forEach(msg => {
         if (msg.type === 'text') {
-          addMessage(msg.nick, msg.text, msg.isSelf, msg.ts, msg.color, msg.isHost, msg.replyTo, true);
+          addMessage(msg.nick, msg.text, msg.isSelf, msg.ts, msg.color, msg.isHost, msg.replyTo, null, true); // ИСПРАВЛЕНО: expiresIn = null, isFromHistory = true
         } else if (msg.type === 'voice') {
           addMediaPlaceholder(msg.nick, msg.ts, msg.color, msg.isHost, '🎤 Голосовое сообщение (история)', msg.replyTo);
         } else if (msg.type === 'file') {
@@ -560,7 +567,7 @@
 
     msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
     
-    attachReplyListeners(msg, { nick, text: text.substring(0, 40) + (text.length > 40 ? '...' : ''), color });
+    attachReplyListeners(msg, { nick, text: text.substring(0, 40) + (text.length > 40 ? '...' : ''), color }, !!expiresIn);
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     
@@ -589,7 +596,7 @@
     msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>
       <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
     
-    attachReplyListeners(msg, { nick, text: '🎤 Голосовое сообщение', color });
+    attachReplyListeners(msg, { nick, text: '🎤 Голосовое сообщение', color }, !!expiresIn);
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     if (expiresIn) scheduleDestruction(msg, expiresIn);
@@ -649,7 +656,7 @@
       msg.innerHTML = `${header}<div class="file-card"><div class="file-icon text-xl">${icon}</div><div class="file-info"><div class="file-name">${escapeHtml(fileName)}</div><div class="file-size">${formatSize(fileSize)}</div></div><button id="${dlId}" class="download-btn" title="Скачать"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button></div>`;
       area.appendChild(msg); area.scrollTop = area.scrollHeight;
       
-      attachReplyListeners(msg, { nick, text: `📎 ${fileName}`, color });
+      attachReplyListeners(msg, { nick, text: `📎 ${fileName}`, color }, !!expiresIn);
       if (expiresIn) scheduleDestruction(msg, expiresIn);
 
       const blob = new Blob([fileData], { type: fileMime || 'application/octet-stream' });
@@ -657,7 +664,7 @@
       return;
     }
     
-    attachReplyListeners(msg, { nick, text: `🖼️ ${fileName}`, color });
+    attachReplyListeners(msg, { nick, text: `🖼️ ${fileName}`, color }, !!expiresIn);
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     if (expiresIn) scheduleDestruction(msg, expiresIn);
@@ -687,7 +694,6 @@
     if (!text) return;
     try {
       const enc = await encryptMessage(encryptionKey, text);
-      // ДОБАВЛЕНО: expiresIn
       const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo };
       if (isEphemeralMode) payload.expiresIn = 30000;
       
@@ -975,7 +981,6 @@
   vb1.ontouchstart = vb2.ontouchstart = e => { e.preventDefault(); startRecording(); };
   vb1.ontouchend = vb2.ontouchend = e => { e.preventDefault(); stopRecording(); };
 
-  // Обработчики для кнопок исчезающих сообщений
   document.getElementById('timer-btn-1').onclick = toggleEphemeralMode;
   document.getElementById('timer-btn-2').onclick = toggleEphemeralMode;
 
