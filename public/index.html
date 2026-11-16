@@ -63,6 +63,11 @@
   .file-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .image-preview { max-width: 100%; border-radius: 12px; cursor: pointer; transition: transform 0.2s; margin-top: 4px; }
   .image-preview:hover { transform: scale(1.02); }
+  
+  /* Стили для палитры цветов */
+  .color-option { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; transition: transform 0.2s, border 0.2s; border: 2px solid transparent; }
+  .color-option:hover { transform: scale(1.15); }
+  .color-option.selected { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
 </style>
 </head>
 <body>
@@ -70,7 +75,6 @@
 <div class="toast-container" id="toast-container"></div>
 <div class="content-layer min-h-screen">
 
-  <!-- НОВЫЙ ЭКРАН БЛОКИРОВКИ -->
   <div id="screen-lock" class="screen flex-col items-center justify-center px-4 min-h-screen">
     <div class="w-full max-w-sm animate-slide-up">
       <div class="text-center mb-8">
@@ -98,7 +102,14 @@
       </div>
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
-        <input id="nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
+        <input id="nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-3 text-base"/>
+        
+        <!-- Палитра цветов (Создание) -->
+        <div class="flex justify-between items-center mb-6 px-1">
+          <span class="text-xs text-[var(--muted)]">Цвет ника:</span>
+          <div class="flex gap-2" id="color-picker-landing"></div>
+        </div>
+
         <button id="create-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           Создать комнату
@@ -109,10 +120,6 @@
         <label class="block text-sm font-medium text-gray-400 mb-2 ml-1">Присоединиться по ссылке</label>
         <input id="join-link-input" type="text" placeholder="Вставьте ссылку..." class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-4 text-sm mono"/>
         <button id="join-btn" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium py-3.5 rounded-xl transition text-base">Войти в комнату</button>
-      </div>
-      <div class="flex items-center justify-center gap-6 mt-10 text-xs text-[var(--muted)] animate-slide-up delay-300">
-        <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg> E2E Шифрование</span>
-        <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Без логов</span>
       </div>
       <div class="text-center mt-8">
         <button id="logout-btn" class="text-xs text-[var(--muted)] hover:text-red-400 transition">Забыть это устройство</button>
@@ -142,10 +149,6 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
             <span id="copy-text">Копировать</span>
           </button>
-        </div>
-        <div class="mt-4 flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-          <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-          <p class="text-xs text-amber-200/90 leading-relaxed">Когда создатель закроет вкладку, комната будет <b>безвозвратно удалена</b> из памяти сервера вместе со всей перепиской.</p>
         </div>
       </div>
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
@@ -181,20 +184,18 @@
       </div>
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
-        <input id="join-nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-6 text-base"/>
+        <input id="join-nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-3 text-base"/>
+        
+        <!-- Палитра цветов (Вход) -->
+        <div class="flex justify-between items-center mb-6 px-1">
+          <span class="text-xs text-[var(--muted)]">Цвет ника:</span>
+          <div class="flex gap-2" id="color-picker-join"></div>
+        </div>
+
         <button id="join-room-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
           Войти в комнату
         </button>
-      </div>
-      <div class="mt-6 bg-[var(--card)]/50 border border-[var(--card-border)] rounded-2xl p-4 flex items-start gap-3 animate-slide-up delay-200">
-        <div class="w-10 h-10 rounded-full bg-[var(--success)]/10 flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-        </div>
-        <div>
-          <p class="text-sm text-white font-medium mb-1">Сквозное шифрование (E2EE)</p>
-          <p class="text-xs text-[var(--muted)] leading-relaxed">Сообщения и файлы шифруются алгоритмом AES-256-GCM прямо в вашем браузере.</p>
-        </div>
       </div>
     </div>
   </div>
@@ -276,9 +277,7 @@
 <script type="module">
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('SW зарегистрирован:', reg.scope))
-        .catch(err => console.log('Ошибка SW:', err));
+      navigator.serviceWorker.register('/sw.js').catch(err => console.log('Ошибка SW:', err));
     });
   }
 
@@ -307,7 +306,6 @@
   const subtle = window.crypto.subtle;
   function toUrlSafeBase64(b) { return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function fromUrlSafeBase64(u) { let b = u.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4 !== 0) b += '='; return b; }
-  
   function uint8ToBase64(uint8) {
     let binary = '';
     const len = uint8.byteLength;
@@ -318,11 +316,9 @@
     }
     return btoa(binary);
   }
-
   async function generateKey() { return await subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
   async function exportKey(key) { const e = await subtle.exportKey('raw', key); return toUrlSafeBase64(uint8ToBase64(new Uint8Array(e))); }
   async function importKey(u) { const b = fromUrlSafeBase64(u); const k = Uint8Array.from(atob(b), c => c.charCodeAt(0)); return await subtle.importKey('raw', k, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); }
-  
   async function encryptMessage(key, message) {
     const data = new TextEncoder().encode(message);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -334,7 +330,6 @@
     const c = Uint8Array.from(atob(encB64), x => x.charCodeAt(0));
     return new TextDecoder().decode(await subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, key, c.slice(12)));
   }
-  
   async function encryptBinary(key, bin) {
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const enc = await subtle.encrypt({ name: 'AES-GCM', iv }, key, bin);
@@ -349,6 +344,36 @@
 
   let socket = null, currentRoomId = null, encryptionKey = null, myNick = '', isCreator = false, typingTimeout = null;
   let mediaRecorder = null, audioChunks = [], isRecording = false, recordingTimer = null, recordingStartTime = 0;
+  let myColor = '#00d4ff'; // Цвет по умолчанию
+
+  // Палитра цветов
+  const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
+
+  function initColorPickers() {
+    const savedColor = localStorage.getItem('flashdrop_color') || '#00d4ff';
+    myColor = savedColor;
+
+    const pickers = ['color-picker-landing', 'color-picker-join'];
+    pickers.forEach(pickerId => {
+      const container = document.getElementById(pickerId);
+      if (!container) return;
+      container.innerHTML = '';
+      COLORS.forEach(c => {
+        const btn = document.createElement('div');
+        btn.className = `color-option ${c === myColor ? 'selected' : ''}`;
+        btn.style.backgroundColor = c;
+        btn.onclick = () => {
+          myColor = c;
+          localStorage.setItem('flashdrop_color', c);
+          // Обновляем выделение во всех пикерах
+          document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+          document.querySelectorAll(`[data-color="${c}"]`).forEach(el => el.classList.add('selected'));
+        };
+        btn.dataset.color = c;
+        container.appendChild(btn);
+      });
+    });
+  }
 
   function showToast(msg, type = 'success') {
     const c = document.getElementById('toast-container');
@@ -369,22 +394,25 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  function addMessage(nick, text, isSelf, ts) {
+  // Обновленные функции добавления сообщений (с цветом и короной)
+  function addMessage(nick, text, isSelf, ts, color, isHost) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
+    const crown = isHost ? ' 👑' : '';
+    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime) {
+  function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime, color, isHost) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
+    const crown = isHost ? ' 👑' : '';
+    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
       <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     
@@ -392,84 +420,46 @@
     const audio = new Audio(URL.createObjectURL(new Blob([audioData], { type: mimeType })));
     const btn = document.getElementById(`play-${msgId}`), fill = document.getElementById(`progf-${msgId}`), bar = document.getElementById(`prog-${msgId}`);
     let playing = false;
-
     const getDuration = () => (audio.duration && isFinite(audio.duration)) ? audio.duration : duration;
 
     audio.onloadedmetadata = () => {
       if (audio.duration === Infinity) {
         audio.currentTime = 1e101;
         const onTimeUpdateHack = () => {
-          audio.ontimeupdate = null;
-          audio.currentTime = 0;
-          audio.ontimeupdate = () => {
-            const dur = getDuration();
-            if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`;
-          };
+          audio.ontimeupdate = null; audio.currentTime = 0;
+          audio.ontimeupdate = () => { const dur = getDuration(); if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`; };
         };
         audio.ontimeupdate = onTimeUpdateHack;
       }
     };
-
-    audio.ontimeupdate = () => {
-      const dur = getDuration();
-      if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`;
-    };
-
+    audio.ontimeupdate = () => { const dur = getDuration(); if (dur > 0) fill.style.width = `${(audio.currentTime / dur) * 100}%`; };
     btn.onclick = () => {
-      if (playing) { 
-        audio.pause(); 
-        btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; 
-        playing = false; 
-      } else { 
-        audio.play().catch(()=>showToast('Ошибка воспроизведения','error')); 
-        btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'; 
-        playing = true; 
-      }
+      if (playing) { audio.pause(); btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; playing = false; }
+      else { audio.play().catch(()=>showToast('Ошибка','error')); btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'; playing = true; }
     };
-
-    audio.onended = () => { 
-      btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; 
-      fill.style.width = '0%'; 
-      playing = false; 
-    };
-
-    bar.onclick = (e) => { 
-      const dur = getDuration();
-      if (dur > 0) {
-        const rect = bar.getBoundingClientRect();
-        const percent = (e.clientX - rect.left) / rect.width;
-        audio.currentTime = percent * dur; 
-        fill.style.width = `${percent * 100}%`;
-      }
-    };
+    audio.onended = () => { btn.innerHTML = '<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; fill.style.width = '0%'; playing = false; };
+    bar.onclick = (e) => { const dur = getDuration(); if (dur > 0) { const rect = bar.getBoundingClientRect(); const percent = (e.clientX - rect.left) / rect.width; audio.currentTime = percent * dur; fill.style.width = `${percent * 100}%`; } };
   }
 
-  function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts) {
+  function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const crown = isHost ? ' 👑' : '';
+    const header = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>`;
     
     if (fileMime && fileMime.startsWith('image/')) {
       const imgUrl = URL.createObjectURL(new Blob([fileData], { type: fileMime }));
-      msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
-        <img src="${imgUrl}" class="image-preview" alt="${escapeHtml(fileName)}" onclick="window.open(this.src, '_blank')" />
-        <div class="text-[10px] text-gray-500 mt-1 text-right">${escapeHtml(fileName)} · ${formatSize(fileSize)}</div>`;
+      msg.innerHTML = `${header}<img src="${imgUrl}" class="image-preview" alt="${escapeHtml(fileName)}" onclick="window.open(this.src, '_blank')" /><div class="text-[10px] text-gray-500 mt-1 text-right">${escapeHtml(fileName)} · ${formatSize(fileSize)}</div>`;
     } else {
       const isDoc = fileMime && (fileMime.includes('pdf') || fileMime.includes('word') || fileMime.includes('text') || fileMime.includes('zip'));
       const icon = isDoc ? '📄' : '📦';
       const dlId = `dl-${Date.now()}`;
-      msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold ${isSelf ? 'text-cyan-300' : 'text-blue-300'}">${escapeHtml(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
-        <div class="file-card">
-          <div class="file-icon text-xl">${icon}</div>
-          <div class="file-info"><div class="file-name">${escapeHtml(fileName)}</div><div class="file-size">${formatSize(fileSize)}</div></div>
-          <button id="${dlId}" class="download-btn" title="Скачать"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button>
-        </div>`;
+      msg.innerHTML = `${header}<div class="file-card"><div class="file-icon text-xl">${icon}</div><div class="file-info"><div class="file-name">${escapeHtml(fileName)}</div><div class="file-size">${formatSize(fileSize)}</div></div><button id="${dlId}" class="download-btn" title="Скачать"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button></div>`;
       area.appendChild(msg); area.scrollTop = area.scrollHeight;
       const blob = new Blob([fileData], { type: fileMime || 'application/octet-stream' });
-      document.getElementById(dlId).onclick = () => {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href);
-      };
+      document.getElementById(dlId).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href); };
       return;
     }
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
@@ -498,25 +488,14 @@
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-    if (file.size > 35 * 1024 * 1024) {
-      showToast('Файл слишком большой (макс. 35 МБ)', 'error');
-      event.target.value = '';
-      return;
-    }
+    if (file.size > 35 * 1024 * 1024) { showToast('Файл слишком большой (макс. 35 МБ)', 'error'); event.target.value = ''; return; }
     showToast(`Шифрование и отправка ${file.name}...`);
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const uint8 = new Uint8Array(arrayBuffer);
-      const enc = await encryptBinary(encryptionKey, uint8);
-      socket.emit('sendMessage', {
-        roomId: currentRoomId, encryptedMessage: enc, type: 'file',
-        fileName: file.name, fileSize: file.size, fileMime: file.type
-      });
-      playNotificationSound('outgoing');
-      showToast('Файл отправлен');
-    } catch (err) {
-      showToast('Ошибка отправки файла: ' + err.message, 'error');
-    }
+      const enc = await encryptBinary(encryptionKey, new Uint8Array(arrayBuffer));
+      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type });
+      playNotificationSound('outgoing'); showToast('Файл отправлен');
+    } catch (err) { showToast('Ошибка отправки файла: ' + err.message, 'error'); }
     event.target.value = '';
   }
 
@@ -536,17 +515,9 @@
         const buf = await blob.arrayBuffer();
         try {
           const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
-          socket.emit('sendMessage', { 
-            roomId: currentRoomId, 
-            encryptedMessage: enc, 
-            type: 'voice', 
-            duration: Math.round(dur * 10) / 10,
-            fileMime: mime || 'audio/webm'
-          });
+          socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm' });
           playNotificationSound('outgoing'); showToast(`Голосовое отправлено (${formatDuration(dur)})`);
-        } catch (err) {
-          showToast('Ошибка шифрования аудио: ' + err.message, 'error');
-        }
+        } catch (err) { showToast('Ошибка шифрования аудио: ' + err.message, 'error'); }
         stream.getTracks().forEach(t => t.stop());
       };
       mediaRecorder.onerror = () => { showToast('Ошибка записи', 'error'); stopRecordingUI(); };
@@ -580,54 +551,38 @@
 
   function initSocket() {
     if (socket) return;
-    socket = io({ 
-      transports: ['websocket', 'polling'],
-      maxHttpBufferSize: 50e6
-    });
+    socket = io({ transports: ['websocket', 'polling'], maxHttpBufferSize: 50e6 });
     
     socket.on('connect', () => {
-      // При подключении проверяем токен
       const savedToken = localStorage.getItem('flashdrop_token');
-      if (savedToken) {
-        socket.emit('auth', { token: savedToken });
-      } else {
-        showScreen('lock');
-      }
+      if (savedToken) socket.emit('auth', { token: savedToken });
+      else showScreen('lock');
     });
 
     socket.on('connect_error', () => showToast('Ошибка подключения к серверу', 'error'));
 
     socket.on('authSuccess', (data) => {
       if (data.token) localStorage.setItem('flashdrop_token', data.token);
+      initColorPickers();
       
-      // Если в ссылке есть данные о комнате — переходим на экран входа
       const p = new URLSearchParams(window.location.hash.substring(1));
       if (p.get('room') && p.get('key')) {
         currentRoomId = p.get('room'); window.encryptionKeyBase64 = p.get('key');
-        importKey(window.encryptionKeyBase64).then(k => { 
-          encryptionKey = k; 
-          document.getElementById('join-room-id').textContent = currentRoomId; 
-          showScreen('join'); 
-        }).catch(() => { showToast('Ошибка ключа', 'error'); window.history.replaceState(null, '', window.location.pathname); showScreen('landing'); });
+        importKey(window.encryptionKeyBase64).then(k => { encryptionKey = k; document.getElementById('join-room-id').textContent = currentRoomId; showScreen('join'); })
+          .catch(() => { showToast('Ошибка ключа', 'error'); window.history.replaceState(null, '', window.location.pathname); showScreen('landing'); });
       } else {
         showScreen('landing');
       }
     });
 
-    socket.on('authError', (d) => {
-      showToast(d.message, 'error');
-      localStorage.removeItem('flashdrop_token');
-      showScreen('lock');
-    });
+    socket.on('authError', (d) => { showToast(d.message, 'error'); localStorage.removeItem('flashdrop_token'); showScreen('lock'); });
 
-    // ... остальные обработчики (roomCreated, message, и т.д.) остаются как были
     socket.on('error', d => {
       showToast(d.message, 'error');
       if (d.message.includes('не найдена')) {
         window.history.replaceState(null, '', window.location.pathname);
         currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
-        document.getElementById('chat-area-1').innerHTML = '';
-        document.getElementById('chat-area-2').innerHTML = '';
+        document.getElementById('chat-area-1').innerHTML = ''; document.getElementById('chat-area-2').innerHTML = '';
         showScreen('landing');
       }
     });
@@ -657,18 +612,16 @@
         const isSelf = d.userId === socket.id;
         if (d.type === 'voice') {
           const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime);
+          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime, d.color, d.isHost);
         } else if (d.type === 'file') {
           const fileData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp);
+          addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp, d.color, d.isHost);
         } else {
           const text = await decryptMessage(encryptionKey, d.encryptedMessage);
-          addMessage(d.nick, text, isSelf, d.timestamp);
+          addMessage(d.nick, text, isSelf, d.timestamp, d.color, d.isHost);
         }
         if (!isSelf) playNotificationSound('incoming');
-      } catch (err) {
-        showToast('Ошибка получения сообщения', 'error');
-      }
+      } catch (err) { showToast('Ошибка получения сообщения', 'error'); }
     });
 
     socket.on('userTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-text').textContent = `${d.nick} печатает`; document.getElementById('typing-indicator').classList.remove('hidden'); } });
@@ -676,19 +629,13 @@
     socket.on('roomEnded', () => showScreen('ended'));
   }
 
-  // --- ОБРАБОТЧИКИ КНОПОК ---
-  
   document.getElementById('auth-btn').onclick = () => {
     const code = document.getElementById('access-code-input').value.trim();
     if (!code) { showToast('Введите код', 'error'); return; }
     socket.emit('auth', { password: code });
   };
   document.getElementById('access-code-input').onkeypress = (e) => { if (e.key === 'Enter') document.getElementById('auth-btn').click(); };
-  
-  document.getElementById('logout-btn').onclick = () => {
-    localStorage.removeItem('flashdrop_token');
-    window.location.reload();
-  };
+  document.getElementById('logout-btn').onclick = () => { localStorage.removeItem('flashdrop_token'); window.location.reload(); };
 
   document.getElementById('create-btn').onclick = async () => {
     ensureAudioContext();
@@ -696,7 +643,8 @@
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = true;
     encryptionKey = await generateKey(); window.encryptionKeyBase64 = await exportKey(encryptionKey);
-    socket.emit('createRoom', { nick });
+    // Передаем цвет на сервер
+    socket.emit('createRoom', { nick, color: myColor });
   };
   
   document.getElementById('join-btn').onclick = async () => {
@@ -717,7 +665,8 @@
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = false;
-    socket.emit('joinRoom', { roomId: currentRoomId, nick, isCreator: false });
+    // Передаем цвет на сервер
+    socket.emit('joinRoom', { roomId: currentRoomId, nick, isCreator: false, color: myColor });
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
     document.getElementById('end-btn-text').textContent = 'Выйти';
@@ -767,20 +716,12 @@
   document.getElementById('new-room-btn').onclick = () => {
     if (socket) { socket.disconnect(); socket = null; }
     currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
-    
-    document.querySelectorAll('audio, img').forEach(el => {
-      if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src);
-    });
-    
-    document.getElementById('chat-area-1').innerHTML = '';
-    document.getElementById('chat-area-2').innerHTML = '';
+    document.querySelectorAll('audio, img').forEach(el => { if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src); });
+    document.getElementById('chat-area-1').innerHTML = ''; document.getElementById('chat-area-2').innerHTML = '';
     window.location.href = window.location.pathname;
   };
 
-  // Инициализация сокета сразу при загрузке
-  window.onload = () => {
-    initSocket();
-  };
+  window.onload = () => { initSocket(); };
 </script>
 </body>
 </html>
