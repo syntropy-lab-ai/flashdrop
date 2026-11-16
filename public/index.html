@@ -73,7 +73,6 @@
   .reply-quote .text { color: #a0a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ephemeral-active { color: #ff4757 !important; background-color: rgba(255, 71, 87, 0.15) !important; border-color: rgba(255, 71, 87, 0.3) !important; }
   
-  /* Стили для статуса онлайн */
   .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; margin-bottom: 1px; transition: background-color 0.3s; }
   .status-dot.online { background-color: var(--success); box-shadow: 0 0 6px var(--success); }
   .status-dot.offline { background-color: var(--muted); }
@@ -166,7 +165,7 @@
       </div>
       
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
-        <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Зашифровано · <span id="user-count-1" class="text-white font-medium">1</span> участник</span>
+        <span class="flex items-center gap-2" id="creator-status-container"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Зашифровано · <span id="user-count-1" class="text-white font-medium">1</span> участник</span>
         <div class="flex items-center gap-2">
           <button id="timer-btn-1" class="p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition text-gray-400" title="Исчезающие сообщения (30 сек)">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -399,7 +398,7 @@
   let isEphemeralMode = false;
   let isSocketReady = false; 
   let isFirstConnect = true;
-  const usersStatus = {}; // Хранилище статусов
+  const usersStatus = {}; 
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -503,23 +502,38 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  // --- ЛОГИКА СТАТУСА ОНЛАЙН ---
   function getStatusDot(nick) {
     const isOnline = usersStatus[nick] !== false;
     return `<span class="status-dot ${isOnline ? 'online' : 'offline'}" data-nick="${escapeHtml(nick)}"></span>`;
   }
 
   function updateHeaderStatus() {
-    const infoEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-    if (!isCreator && infoEl) {
-      // Для участника обновляем шапку
-      const otherUser = Object.keys(usersStatus).find(n => n !== myNick);
-      if (otherUser) {
-        infoEl.innerHTML = `${currentRoomId} · <span style="display:inline-flex;align-items:center;">${otherUser} ${getStatusDot(otherUser)}</span>`;
+    const otherUser = Object.keys(usersStatus).find(n => n !== myNick);
+    
+    if (isCreator) {
+      const el = document.getElementById('user-count-1');
+      if (el) {
+        const parent = el.parentElement;
+        if (parent) {
+          const count = el.textContent;
+          if (otherUser) {
+            parent.innerHTML = `<span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Зашифровано · <span id="user-count-1" class="text-white font-medium">${count}</span> участник · <span style="display:inline-flex;align-items:center;">${otherUser} ${getStatusDot(otherUser)}</span>`;
+          } else {
+            parent.innerHTML = `<span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Зашифровано · <span id="user-count-1" class="text-white font-medium">${count}</span> участник`;
+          }
+        }
+      }
+    } else {
+      const infoEl = document.getElementById('chat-header-info');
+      if (infoEl) {
+        if (otherUser) {
+          infoEl.innerHTML = `${currentRoomId} · <span style="display:inline-flex;align-items:center;">${otherUser} ${getStatusDot(otherUser)}</span>`;
+        } else {
+          infoEl.textContent = `${currentRoomId} · 1 участник`;
+        }
       }
     }
   }
-  // -----------------------------
 
   function setReplyTo(msg) {
     currentReplyTo = msg;
@@ -903,7 +917,6 @@
 
     socket.on('disconnect', () => {
       isSocketReady = false;
-      // Помечаем всех как "Не в сети" локально при обрыве
       for (let key in usersStatus) usersStatus[key] = false;
       document.querySelectorAll('.status-dot').forEach(el => {
         el.classList.remove('online');
@@ -935,7 +948,7 @@
           importKey(window.encryptionKeyBase64).then(k => {
             encryptionKey = k;
             isRestoringSession = true;
-            usersStatus[myNick] = true; // Я онлайн
+            usersStatus[myNick] = true; 
             socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator, color: myColor });
             
             document.getElementById('chat-room-id').textContent = currentRoomId;
@@ -986,6 +999,13 @@
 
     socket.on('authError', (d) => { showToast(d.message, 'error'); localStorage.removeItem('flashdrop_token'); showScreen('lock'); isSocketReady = false; });
 
+    socket.on('onlineUsers', (users) => {
+      users.forEach(nick => {
+        if (usersStatus[nick] === undefined) usersStatus[nick] = true;
+      });
+      updateHeaderStatus();
+    });
+
     socket.on('error', d => {
       if (isRestoringSession && d.message.includes('не найдена')) {
         isRestoringSession = false;
@@ -1026,35 +1046,38 @@
       isSocketReady = true;
       usersStatus[d.nick] = true;
       
-      const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if (isCreator) el.textContent = d.userCount; 
-      else updateHeaderStatus();
+      const el = document.getElementById('user-count-1');
+      if (isCreator && el) el.textContent = d.userCount; 
       
+      updateHeaderStatus();
       addSystemMessage(`👤 ${d.nick} присоединился`);
     });
 
     socket.on('userLeft', d => {
-      const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if (isCreator) el.textContent = d.userCount; 
-      else updateHeaderStatus();
+      const el = document.getElementById('user-count-1');
+      if (isCreator && el) el.textContent = d.userCount; 
       
+      updateHeaderStatus();
       addSystemMessage(`👋 ${d.nick} покинул комнату`);
     });
 
     socket.on('userStatusChange', d => {
       usersStatus[d.nick] = d.online;
       
-      // Обновляем все точки в сообщениях
       document.querySelectorAll(`.status-dot[data-nick="${d.nick}"]`).forEach(el => {
         el.className = `status-dot ${d.online ? 'online' : 'offline'}`;
       });
       
-      // Обновляем шапку, если это собеседник
-      if (d.nick !== myNick) updateHeaderStatus();
+      updateHeaderStatus();
     });
 
     socket.on('message', async d => {
       try {
+        if (usersStatus[d.nick] === undefined) {
+          usersStatus[d.nick] = true;
+          updateHeaderStatus();
+        }
+
         const isSelf = d.userId === socket.id;
         if (d.type === 'voice') {
           const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
