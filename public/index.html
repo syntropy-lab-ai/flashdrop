@@ -34,9 +34,10 @@
   .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3); }
   .btn-primary:active { transform: translateY(0); }
   @keyframes msg-pop { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  .message-bubble { animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-width: 85%; word-wrap: break-word; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .message-bubble { animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-width: 85%; word-wrap: break-word; cursor: pointer; user-select: none; -webkit-user-select: none; transition: opacity 0.5s ease-out, transform 0.5s ease-out; }
   .message-bubble.self { background: linear-gradient(135deg, rgba(0, 119, 255, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%); border: 1px solid rgba(0, 212, 255, 0.3); margin-left: auto; }
   .message-bubble.other { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); margin-right: auto; }
+  .message-bubble.destroying { opacity: 0; transform: scale(0.9); }
   ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #2d3348; border-radius: 3px; }
   .input-field { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--card-border); transition: all 0.2s ease; }
   .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1); outline: none; }
@@ -70,6 +71,9 @@
   .reply-quote { background: rgba(0, 0, 0, 0.3); border-left: 3px solid; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
   .reply-quote .nick { font-weight: 600; font-size: 10px; margin-bottom: 2px; }
   .reply-quote .text { color: #a0a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  
+  /* Стили для исчезающих сообщений */
+  .ephemeral-active { color: #ff4757 !important; background-color: rgba(255, 71, 87, 0.15) !important; border-color: rgba(255, 71, 87, 0.3) !important; }
 </style>
 </head>
 <body>
@@ -150,9 +154,16 @@
           </button>
         </div>
       </div>
+      
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
         <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Зашифровано · <span id="user-count-1" class="text-white font-medium">1</span> участник</span>
-        <span id="room-id-display-1" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
+        <div class="flex items-center gap-2">
+          <!-- Кнопка исчезающих сообщений -->
+          <button id="timer-btn-1" class="p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition text-gray-400" title="Исчезающие сообщения (30 сек)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
+          <span id="room-id-display-1" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
+        </div>
       </div>
       <div id="chat-area-1" class="flex-1 space-y-3 mb-4 overflow-y-auto pr-1 min-h-[250px]"></div>
       
@@ -225,7 +236,13 @@
     <main class="flex-1 px-2 sm:px-4 py-4 max-w-2xl mx-auto w-full flex flex-col">
       <div class="flex items-center justify-between text-xs text-[var(--muted)] mb-3 px-1">
         <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse"></span> Соединение защищено</span>
-        <span id="chat-room-id" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
+        <div class="flex items-center gap-2">
+          <!-- Кнопка исчезающих сообщений -->
+          <button id="timer-btn-2" class="p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition text-gray-400" title="Исчезающие сообщения (30 сек)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
+          <span id="chat-room-id" class="mono bg-white/5 px-2 py-1 rounded-md"></span>
+        </div>
       </div>
       <div id="chat-area-2" class="flex-1 space-y-3 mb-2 overflow-y-auto pr-1"></div>
       <div id="typing-indicator" class="hidden text-xs text-[var(--muted)] mb-2 px-1 h-5 flex items-center gap-1.5">
@@ -363,7 +380,8 @@
   let myColor = '#00d4ff';
   let chatHistory = [];
   let currentReplyTo = null;
-  let isRestoringSession = false; // <-- Флаг для тихого восстановления
+  let isRestoringSession = false;
+  let isEphemeralMode = false; // Режим исчезающих сообщений
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -390,6 +408,22 @@
         container.appendChild(btn);
       });
     });
+  }
+
+  function toggleEphemeralMode() {
+    isEphemeralMode = !isEphemeralMode;
+    const btn1 = document.getElementById('timer-btn-1');
+    const btn2 = document.getElementById('timer-btn-2');
+    
+    if (isEphemeralMode) {
+      btn1.classList.add('ephemeral-active');
+      btn2.classList.add('ephemeral-active');
+      showToast('Режим "Секрет" включен (30 сек)', 'success');
+    } else {
+      btn1.classList.remove('ephemeral-active');
+      btn2.classList.remove('ephemeral-active');
+      showToast('Режим "Секрет" выключен', 'success');
+    }
   }
 
   function showToast(msg, type = 'success') {
@@ -457,6 +491,14 @@
     el.addEventListener('touchmove', () => clearTimeout(touchTimer));
   }
 
+  function scheduleDestruction(el, expiresIn) {
+    if (!expiresIn) return;
+    setTimeout(() => {
+      el.classList.add('destroying');
+      setTimeout(() => el.remove(), 500); // Ждем окончания CSS-анимации
+    }, expiresIn);
+  }
+
   function saveHistory() {
     try {
       if (chatHistory.length > 100) chatHistory = chatHistory.slice(-100);
@@ -499,8 +541,8 @@
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addMessage(nick, text, isSelf, ts, color, isHost, replyTo, isFromHistory = false) {
-    if (!isFromHistory) {
+  function addMessage(nick, text, isSelf, ts, color, isHost, replyTo, expiresIn, isFromHistory = false) {
+    if (!isFromHistory && !expiresIn) {
       chatHistory.push({ type: 'text', nick, text, isSelf, ts, color, isHost, replyTo });
       saveHistory();
     }
@@ -509,22 +551,27 @@
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
+    const timerIcon = expiresIn ? ' <span title="Исчезнет через 30 сек" style="color:#ff4757;font-size:10px;">⏱️</span>' : '';
 
     let replyHtml = '';
     if (replyTo) {
       replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
     }
 
-    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
     
     attachReplyListeners(msg, { nick, text: text.substring(0, 40) + (text.length > 40 ? '...' : ''), color });
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
+    
+    if (expiresIn) scheduleDestruction(msg, expiresIn);
   }
 
-  function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime, color, isHost, replyTo) {
-    chatHistory.push({ type: 'voice', nick, duration, isSelf, ts, fileMime, color, isHost, replyTo });
-    saveHistory();
+  function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime, color, isHost, replyTo, expiresIn) {
+    if (!expiresIn) {
+      chatHistory.push({ type: 'voice', nick, duration, isSelf, ts, fileMime, color, isHost, replyTo });
+      saveHistory();
+    }
     
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -532,18 +579,20 @@
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
+    const timerIcon = expiresIn ? ' <span title="Исчезнет через 30 сек" style="color:#ff4757;font-size:10px;">⏱️</span>' : '';
     
     let replyHtml = '';
     if (replyTo) {
       replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
     }
 
-    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>
       <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
     
     attachReplyListeners(msg, { nick, text: '🎤 Голосовое сообщение', color });
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
+    if (expiresIn) scheduleDestruction(msg, expiresIn);
     
     const mimeType = fileMime || 'audio/webm';
     const audio = new Audio(URL.createObjectURL(new Blob([audioData], { type: mimeType })));
@@ -570,22 +619,25 @@
     bar.onclick = (e) => { const dur = getDuration(); if (dur > 0) { const rect = bar.getBoundingClientRect(); const percent = (e.clientX - rect.left) / rect.width; audio.currentTime = percent * dur; fill.style.width = `${percent * 100}%`; } };
   }
 
-  function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo) {
-    chatHistory.push({ type: 'file', nick, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo });
-    saveHistory();
+  function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo, expiresIn) {
+    if (!expiresIn) {
+      chatHistory.push({ type: 'file', nick, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo });
+      saveHistory();
+    }
 
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
+    const timerIcon = expiresIn ? ' <span title="Исчезнет через 30 сек" style="color:#ff4757;font-size:10px;">⏱️</span>' : '';
     
     let replyHtml = '';
     if (replyTo) {
       replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
     }
 
-    const header = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>`;
+    const header = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>`;
     
     if (fileMime && fileMime.startsWith('image/')) {
       const imgUrl = URL.createObjectURL(new Blob([fileData], { type: fileMime }));
@@ -598,6 +650,7 @@
       area.appendChild(msg); area.scrollTop = area.scrollHeight;
       
       attachReplyListeners(msg, { nick, text: `📎 ${fileName}`, color });
+      if (expiresIn) scheduleDestruction(msg, expiresIn);
 
       const blob = new Blob([fileData], { type: fileMime || 'application/octet-stream' });
       document.getElementById(dlId).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href); };
@@ -607,6 +660,7 @@
     attachReplyListeners(msg, { nick, text: `🖼️ ${fileName}`, color });
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
+    if (expiresIn) scheduleDestruction(msg, expiresIn);
   }
 
   function addSystemMessage(text) {
@@ -633,7 +687,11 @@
     if (!text) return;
     try {
       const enc = await encryptMessage(encryptionKey, text);
-      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo });
+      // ДОБАВЛЕНО: expiresIn
+      const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo };
+      if (isEphemeralMode) payload.expiresIn = 30000;
+      
+      socket.emit('sendMessage', payload);
       input.value = ''; socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
       playNotificationSound('outgoing');
       cancelReply();
@@ -648,7 +706,11 @@
     try {
       const arrayBuffer = await file.arrayBuffer();
       const enc = await encryptBinary(encryptionKey, new Uint8Array(arrayBuffer));
-      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type, replyTo: currentReplyTo });
+      
+      const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type, replyTo: currentReplyTo };
+      if (isEphemeralMode) payload.expiresIn = 30000;
+
+      socket.emit('sendMessage', payload);
       playNotificationSound('outgoing'); showToast('Файл отправлен');
       cancelReply();
     } catch (err) { showToast('Ошибка отправки файла: ' + err.message, 'error'); }
@@ -671,7 +733,11 @@
         const buf = await blob.arrayBuffer();
         try {
           const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
-          socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm', replyTo: currentReplyTo });
+          
+          const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm', replyTo: currentReplyTo };
+          if (isEphemeralMode) payload.expiresIn = 30000;
+
+          socket.emit('sendMessage', payload);
           playNotificationSound('outgoing'); showToast(`Голосовое отправлено (${formatDuration(dur)})`);
           cancelReply();
         } catch (err) { showToast('Ошибка шифрования аудио: ' + err.message, 'error'); }
@@ -739,7 +805,7 @@
 
           importKey(window.encryptionKeyBase64).then(k => {
             encryptionKey = k;
-            isRestoringSession = true; // ВКЛЮЧАЕМ ТИХИЙ РЕЖИМ
+            isRestoringSession = true;
             socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator, color: myColor });
             
             document.getElementById('chat-room-id').textContent = currentRoomId;
@@ -781,7 +847,6 @@
 
     socket.on('error', d => {
       if (isRestoringSession && d.message.includes('не найдена')) {
-        // ТИХО очищаем сессию, если старая комната больше не существует
         isRestoringSession = false;
         clearSession();
         window.history.replaceState(null, '', window.location.pathname);
@@ -812,7 +877,7 @@
     });
 
     socket.on('userJoined', d => {
-      isRestoringSession = false; // Успешно присоединились, сбрасываем флаг
+      isRestoringSession = false;
       const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
       if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
       addSystemMessage(`👤 ${d.nick} присоединился`);
@@ -829,13 +894,13 @@
         const isSelf = d.userId === socket.id;
         if (d.type === 'voice') {
           const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime, d.color, d.isHost, d.replyTo);
+          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime, d.color, d.isHost, d.replyTo, d.expiresIn);
         } else if (d.type === 'file') {
           const fileData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp, d.color, d.isHost, d.replyTo);
+          addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp, d.color, d.isHost, d.replyTo, d.expiresIn);
         } else {
           const text = await decryptMessage(encryptionKey, d.encryptedMessage);
-          addMessage(d.nick, text, isSelf, d.timestamp, d.color, d.isHost, d.replyTo);
+          addMessage(d.nick, text, isSelf, d.timestamp, d.color, d.isHost, d.replyTo, d.expiresIn);
         }
         if (!isSelf) playNotificationSound('incoming');
       } catch (err) { showToast('Ошибка получения сообщения', 'error'); }
@@ -909,6 +974,10 @@
   vb1.onmouseup = vb2.onmouseup = vb1.onmouseleave = vb2.onmouseleave = stopRecording;
   vb1.ontouchstart = vb2.ontouchstart = e => { e.preventDefault(); startRecording(); };
   vb1.ontouchend = vb2.ontouchend = e => { e.preventDefault(); stopRecording(); };
+
+  // Обработчики для кнопок исчезающих сообщений
+  document.getElementById('timer-btn-1').onclick = toggleEphemeralMode;
+  document.getElementById('timer-btn-2').onclick = toggleEphemeralMode;
 
   document.getElementById('copy-btn').onclick = async () => {
     try {
