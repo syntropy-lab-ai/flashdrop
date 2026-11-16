@@ -80,15 +80,49 @@
   .lightbox-close { position: absolute; top: max(20px, env(safe-area-inset-top, 20px)); right: 20px; background: rgba(15, 17, 26, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); backdrop-filter: blur(5px); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: background 0.2s; z-index: 10001; }
   .lightbox-close:hover { background: rgba(255, 255, 255, 0.2); }
 
-  /* Стили для точек онлайна */
   .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; transition: background-color 0.3s; }
   .status-dot.online { background-color: var(--success); box-shadow: 0 0 5px var(--success); }
   .status-dot.offline { background-color: var(--muted); opacity: 0.5; }
+
+  /* Стили для контекстного меню */
+  #context-menu {
+    position: fixed; z-index: 9999; display: none; flex-direction: column;
+    background: rgba(15, 17, 26, 0.95); backdrop-filter: blur(10px);
+    border: 1px solid var(--card-border); border-radius: 12px; padding: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 160px;
+    animation: slide-up 0.2s ease forwards;
+  }
+  #context-menu.active { display: flex; }
+  .context-btn {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    font-size: 14px; color: var(--text); background: transparent; border: none;
+    border-radius: 8px; cursor: pointer; transition: background 0.2s; text-align: left;
+  }
+  .context-btn:hover { background: rgba(255,255,255,0.1); }
+  .context-btn.danger { color: var(--danger); }
+  .context-btn.danger:hover { background: rgba(255, 71, 87, 0.1); }
 </style>
 </head>
 <body>
 <div class="bg-glow"></div><div class="bg-glow-2"></div>
 <div class="toast-container" id="toast-container"></div>
+
+<!-- КОНТЕКСТНОЕ МЕНЮ -->
+<div id="context-menu">
+  <button id="menu-reply" class="context-btn">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+    Ответить
+  </button>
+  <button id="menu-delete-me" class="context-btn danger">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    Удалить у себя
+  </button>
+  <button id="menu-delete-all" class="context-btn danger" style="display: none;">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    Удалить у всех
+  </button>
+</div>
+
 <div class="content-layer min-h-screen">
 
   <div id="screen-lock" class="screen flex-col items-center justify-center px-4 min-h-screen">
@@ -397,7 +431,7 @@
   let currentReplyTo = null;
   let isRestoringSession = false;
   let isEphemeralMode = false;
-  let onlineUsers = new Set(); // Сет для хранения ID тех, кто сейчас в сети
+  let onlineUsers = new Set();
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -418,6 +452,87 @@
 
   lightbox.addEventListener('click', closeLightbox);
   lightboxClose.addEventListener('click', closeLightbox);
+
+  // --- ЛОГИКА КОНТЕКСТНОГО МЕНЮ ---
+  const contextMenu = document.getElementById('context-menu');
+  let activeMsgData = null; // Данные сообщения, на котором открыто меню
+  let activeMsgElement = null;
+
+  function showContextMenu(x, y, msgData, el) {
+    activeMsgData = msgData;
+    activeMsgElement = el;
+    
+    // Показываем/скрываем кнопку "Удалить у всех"
+    const deleteAllBtn = document.getElementById('menu-delete-all');
+    if (msgData.isSelf) {
+      deleteAllBtn.style.display = 'flex';
+    } else {
+      deleteAllBtn.style.display = 'none';
+    }
+
+    // Позиционирование
+    contextMenu.classList.add('active');
+    const menuWidth = contextMenu.offsetWidth;
+    const menuHeight = contextMenu.offsetHeight;
+    const winWidth = window.innerWidth;
+    const winHeight = window.innerHeight;
+
+    let posX = x;
+    let posY = y;
+
+    if (posX + menuWidth > winWidth) posX = winWidth - menuWidth - 10;
+    if (posY + menuHeight > winHeight) posY = winHeight - menuHeight - 10;
+
+    contextMenu.style.left = `${Math.max(10, posX)}px`;
+    contextMenu.style.top = `${Math.max(10, posY)}px`;
+  }
+
+  function hideContextMenu() {
+    contextMenu.classList.remove('active');
+    activeMsgData = null;
+    activeMsgElement = null;
+  }
+
+  // Закрываем меню при клике в любом другом месте
+  document.addEventListener('click', (e) => {
+    if (!contextMenu.contains(e.target)) hideContextMenu();
+  });
+
+  document.getElementById('menu-reply').onclick = () => {
+    if (activeMsgData) {
+      setReplyTo(activeMsgData);
+      hideContextMenu();
+    }
+  };
+
+  document.getElementById('menu-delete-me').onclick = () => {
+    if (activeMsgData) {
+      deleteMessageLocally(activeMsgData.msgId);
+      hideContextMenu();
+    }
+  };
+
+  document.getElementById('menu-delete-all').onclick = () => {
+    if (activeMsgData) {
+      socket.emit('deleteMessage', { roomId: currentRoomId, msgId: activeMsgData.msgId });
+      deleteMessageLocally(activeMsgData.msgId);
+      hideContextMenu();
+    }
+  };
+
+  function deleteMessageLocally(msgId) {
+    // Удаляем из DOM
+    const el = document.getElementById(msgId) || document.querySelector(`[data-msgid="${msgId}"]`);
+    if (el) {
+      el.classList.add('destroying');
+      setTimeout(() => el.remove(), 300);
+    }
+    
+    // Удаляем из истории
+    chatHistory = chatHistory.filter(m => m.msgId !== msgId);
+    saveHistory();
+  }
+  // ---------------------------------
 
   function initColorPickers() {
     const savedColor = localStorage.getItem('flashdrop_color') || '#00d4ff';
@@ -507,31 +622,24 @@
     btn.onclick = cancelReply;
   });
 
-  function attachReplyListeners(el, msgData, isEphemeral = false) {
-    if (isEphemeral) {
-      el.addEventListener('dblclick', (e) => { e.preventDefault(); showToast('Нельзя отвечать на исчезающее сообщение', 'error'); });
-      let touchTimer;
-      el.addEventListener('touchstart', (e) => {
-        touchTimer = setTimeout(() => { showToast('Нельзя отвечать на исчезающее сообщение', 'error'); if (navigator.vibrate) navigator.vibrate([50, 50, 50]); }, 500);
-      }, { passive: true });
-      el.addEventListener('touchend', () => clearTimeout(touchTimer));
-      el.addEventListener('touchmove', () => clearTimeout(touchTimer));
-      return;
-    }
-
-    el.addEventListener('dblclick', (e) => {
+  function attachMessageListeners(el, msgData, isEphemeral = false) {
+    // ПК: Правый клик
+    el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      if (window.getSelection().toString().length > 0) return;
-      setReplyTo(msgData);
+      if (window.getSelection().toString().length > 0) return; 
+      showContextMenu(e.clientX, e.clientY, msgData, el);
     });
 
+    // Мобилка: Долгое нажатие
     let touchTimer;
     el.addEventListener('touchstart', (e) => {
       touchTimer = setTimeout(() => {
-        setReplyTo(msgData);
         if (navigator.vibrate) navigator.vibrate(50);
+        const touch = e.touches[0];
+        showContextMenu(touch.clientX, touch.clientY, msgData, el);
       }, 500);
     }, { passive: true });
+    
     el.addEventListener('touchend', () => clearTimeout(touchTimer));
     el.addEventListener('touchmove', () => clearTimeout(touchTimer));
   }
@@ -542,14 +650,6 @@
       el.classList.add('destroying');
       setTimeout(() => el.remove(), 500);
     }, expiresIn);
-  }
-
-  function updateDot(userId, isOnline) {
-    const dots = document.querySelectorAll(`.status-dot[data-userid="${userId}"]`);
-    dots.forEach(dot => {
-      if (isOnline) dot.classList.replace('offline', 'online');
-      else dot.classList.replace('online', 'offline');
-    });
   }
 
   function saveHistory() {
@@ -568,19 +668,21 @@
       chatHistory = JSON.parse(savedHistory);
       chatHistory.forEach(msg => {
         if (msg.type === 'text') {
-          addMessage(msg.userId, msg.nick, msg.text, msg.isSelf, msg.ts, msg.color, msg.isHost, msg.replyTo, null, true); 
+          addMessage(msg.msgId, msg.userId, msg.nick, msg.text, msg.isSelf, msg.ts, msg.color, msg.isHost, msg.replyTo, null, true); 
         } else if (msg.type === 'voice') {
-          addMediaPlaceholder(msg.userId, msg.nick, msg.ts, msg.color, msg.isHost, '🎤 Голосовое сообщение (история)', msg.replyTo);
+          addMediaPlaceholder(msg.msgId, msg.userId, msg.nick, msg.ts, msg.color, msg.isHost, '🎤 Голосовое сообщение (история)', msg.replyTo);
         } else if (msg.type === 'file') {
-          addMediaPlaceholder(msg.userId, msg.nick, msg.ts, msg.color, msg.isHost, `📎 Файл: ${msg.fileName} (история)`, msg.replyTo);
+          addMediaPlaceholder(msg.msgId, msg.userId, msg.nick, msg.ts, msg.color, msg.isHost, `📎 Файл: ${msg.fileName} (история)`, msg.replyTo);
         }
       });
     } catch (e) { console.error(e); }
   }
 
-  function addMediaPlaceholder(userId, nick, ts, color, isHost, text, replyTo) {
+  function addMediaPlaceholder(msgId, userId, nick, ts, color, isHost, text, replyTo) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
+    msg.id = msgId;
+    msg.dataset.msgid = msgId;
     msg.className = `message-bubble other p-3 rounded-2xl opacity-70`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
@@ -592,16 +694,21 @@
     }
 
     msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}<span class="status-dot ${isOnline ? 'online' : 'offline'}" data-userid="${userId}"></span></span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><div class="history-placeholder">${text}</div>`;
+    
+    attachMessageListeners(msg, { msgId, userId, nick, text, color, isSelf: false });
+    
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addMessage(userId, nick, text, isSelf, ts, color, isHost, replyTo, expiresIn, isFromHistory = false) {
+  function addMessage(msgId, userId, nick, text, isSelf, ts, color, isHost, replyTo, expiresIn, isFromHistory = false) {
     if (!isFromHistory && !expiresIn) {
-      chatHistory.push({ type: 'text', userId, nick, text, isSelf, ts, color, isHost, replyTo });
+      chatHistory.push({ msgId, type: 'text', userId, nick, text, isSelf, ts, color, isHost, replyTo });
       saveHistory();
     }
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
+    msg.id = msgId;
+    msg.dataset.msgid = msgId;
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
@@ -615,22 +722,24 @@
 
     msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}<span class="status-dot ${isOnline ? 'online' : 'offline'}" data-userid="${userId}"></span></span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
     
-    attachReplyListeners(msg, { nick, text: text.substring(0, 40) + (text.length > 40 ? '...' : ''), color }, !!expiresIn);
+    attachMessageListeners(msg, { msgId, userId, nick, text: text.substring(0, 40) + (text.length > 40 ? '...' : ''), color, isSelf }, !!expiresIn);
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     
     if (expiresIn) scheduleDestruction(msg, expiresIn);
   }
 
-  function addVoiceMessage(userId, nick, audioData, duration, isSelf, ts, fileMime, color, isHost, replyTo, expiresIn) {
+  function addVoiceMessage(msgId, userId, nick, audioData, duration, isSelf, ts, fileMime, color, isHost, replyTo, expiresIn) {
     if (!expiresIn) {
-      chatHistory.push({ type: 'voice', userId, nick, duration, isSelf, ts, fileMime, color, isHost, replyTo });
+      chatHistory.push({ msgId, type: 'voice', userId, nick, duration, isSelf, ts, fileMime, color, isHost, replyTo });
       saveHistory();
     }
     
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
-    const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const localMsgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const msg = document.createElement('div');
+    msg.id = msgId;
+    msg.dataset.msgid = msgId;
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
@@ -643,16 +752,16 @@
     }
 
     msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}<span class="status-dot ${isOnline ? 'online' : 'offline'}" data-userid="${userId}"></span></span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>
-      <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
+      <div class="media-player"><button id="play-${localMsgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${localMsgId}"><div class="progress-fill" id="progf-${localMsgId}" style="width:0%"></div></div><span class="duration" id="dur-${localMsgId}">${formatDuration(duration)}</span></div>`;
     
-    attachReplyListeners(msg, { nick, text: '🎤 Голосовое сообщение', color }, !!expiresIn);
+    attachMessageListeners(msg, { msgId, userId, nick, text: '🎤 Голосовое сообщение', color, isSelf }, !!expiresIn);
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     if (expiresIn) scheduleDestruction(msg, expiresIn);
     
     const mimeType = fileMime || 'audio/webm';
     const audio = new Audio(URL.createObjectURL(new Blob([audioData], { type: mimeType })));
-    const btn = document.getElementById(`play-${msgId}`), fill = document.getElementById(`progf-${msgId}`), bar = document.getElementById(`prog-${msgId}`);
+    const btn = document.getElementById(`play-${localMsgId}`), fill = document.getElementById(`progf-${localMsgId}`), bar = document.getElementById(`prog-${localMsgId}`);
     let playing = false;
     const getDuration = () => (audio.duration && isFinite(audio.duration)) ? audio.duration : duration;
 
@@ -675,14 +784,17 @@
     bar.onclick = (e) => { const dur = getDuration(); if (dur > 0) { const rect = bar.getBoundingClientRect(); const percent = (e.clientX - rect.left) / rect.width; audio.currentTime = percent * dur; fill.style.width = `${percent * 100}%`; } };
   }
 
-  function addFileMessage(userId, nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo, expiresIn) {
+  function addFileMessage(msgId, userId, nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo, expiresIn) {
     if (!expiresIn) {
-      chatHistory.push({ type: 'file', userId, nick, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo });
+      chatHistory.push({ msgId, type: 'file', userId, nick, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo });
       saveHistory();
     }
 
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
+    const localMsgId = `dl-${Date.now()}`;
     const msg = document.createElement('div');
+    msg.id = msgId;
+    msg.dataset.msgid = msgId;
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
@@ -702,19 +814,18 @@
     } else {
       const isDoc = fileMime && (fileMime.includes('pdf') || fileMime.includes('word') || fileMime.includes('text') || fileMime.includes('zip'));
       const icon = isDoc ? '📄' : '📦';
-      const dlId = `dl-${Date.now()}`;
-      msg.innerHTML = `${header}<div class="file-card"><div class="file-icon text-xl">${icon}</div><div class="file-info"><div class="file-name">${escapeHtml(fileName)}</div><div class="file-size">${formatSize(fileSize)}</div></div><button id="${dlId}" class="download-btn" title="Скачать"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button></div>`;
+      msg.innerHTML = `${header}<div class="file-card"><div class="file-icon text-xl">${icon}</div><div class="file-info"><div class="file-name">${escapeHtml(fileName)}</div><div class="file-size">${formatSize(fileSize)}</div></div><button id="${localMsgId}" class="download-btn" title="Скачать"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button></div>`;
       area.appendChild(msg); area.scrollTop = area.scrollHeight;
       
-      attachReplyListeners(msg, { nick, text: `📎 ${fileName}`, color }, !!expiresIn);
+      attachMessageListeners(msg, { msgId, userId, nick, text: `📎 ${fileName}`, color, isSelf }, !!expiresIn);
       if (expiresIn) scheduleDestruction(msg, expiresIn);
 
       const blob = new Blob([fileData], { type: fileMime || 'application/octet-stream' });
-      document.getElementById(dlId).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href); };
+      document.getElementById(localMsgId).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href); };
       return;
     }
     
-    attachReplyListeners(msg, { nick, text: `🖼️ ${fileName}`, color }, !!expiresIn);
+    attachMessageListeners(msg, { msgId, userId, nick, text: `🖼️ ${fileName}`, color, isSelf }, !!expiresIn);
     
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     if (expiresIn) scheduleDestruction(msg, expiresIn);
@@ -744,8 +855,10 @@
     const text = input.value.trim();
     if (!text) return;
     try {
+      const msgId = crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}-${Math.random()}`;
       const enc = await encryptMessage(encryptionKey, text);
-      const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo };
+      
+      const payload = { roomId: currentRoomId, msgId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo };
       if (isEphemeralMode) payload.expiresIn = 30000;
       
       socket.emit('sendMessage', payload);
@@ -761,10 +874,11 @@
     if (file.size > 35 * 1024 * 1024) { showToast('Файл слишком большой (макс. 35 МБ)', 'error'); event.target.value = ''; return; }
     showToast(`Шифрование и отправка ${file.name}...`);
     try {
+      const msgId = crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}-${Math.random()}`;
       const arrayBuffer = await file.arrayBuffer();
       const enc = await encryptBinary(encryptionKey, new Uint8Array(arrayBuffer));
       
-      const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type, replyTo: currentReplyTo };
+      const payload = { roomId: currentRoomId, msgId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type, replyTo: currentReplyTo };
       if (isEphemeralMode) payload.expiresIn = 30000;
 
       socket.emit('sendMessage', payload);
@@ -789,9 +903,10 @@
         const blob = new Blob(audioChunks, { type: mime || 'audio/webm' });
         const buf = await blob.arrayBuffer();
         try {
+          const msgId = crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}-${Math.random()}`;
           const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
           
-          const payload = { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm', replyTo: currentReplyTo };
+          const payload = { roomId: currentRoomId, msgId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm', replyTo: currentReplyTo };
           if (isEphemeralMode) payload.expiresIn = 30000;
 
           socket.emit('sendMessage', payload);
@@ -920,15 +1035,18 @@
       }
     });
 
-    // Слушаем список онлайна от сервера
     socket.on('onlineUsers', (userIds) => {
       onlineUsers = new Set(userIds);
-      // Обновляем все существующие точки на экране
       document.querySelectorAll('.status-dot').forEach(dot => {
         const uid = dot.dataset.userid;
         if (onlineUsers.has(uid)) dot.classList.replace('offline', 'online');
         else dot.classList.replace('online', 'offline');
       });
+    });
+
+    // Слушаем удаление
+    socket.on('messageDeleted', (data) => {
+      deleteMessageLocally(data.msgId);
     });
 
     socket.on('roomCreated', d => {
@@ -962,13 +1080,13 @@
         const isSelf = d.userId === socket.id;
         if (d.type === 'voice') {
           const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addVoiceMessage(d.userId, d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime, d.color, d.isHost, d.replyTo, d.expiresIn);
+          addVoiceMessage(d.msgId, d.userId, d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime, d.color, d.isHost, d.replyTo, d.expiresIn);
         } else if (d.type === 'file') {
           const fileData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addFileMessage(d.userId, d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp, d.color, d.isHost, d.replyTo, d.expiresIn);
+          addFileMessage(d.msgId, d.userId, d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp, d.color, d.isHost, d.replyTo, d.expiresIn);
         } else {
           const text = await decryptMessage(encryptionKey, d.encryptedMessage);
-          addMessage(d.userId, d.nick, text, isSelf, d.timestamp, d.color, d.isHost, d.replyTo, d.expiresIn);
+          addMessage(d.msgId, d.userId, d.nick, text, isSelf, d.timestamp, d.color, d.isHost, d.replyTo, d.expiresIn);
         }
         if (!isSelf) playNotificationSound('incoming');
       } catch (err) { showToast('Ошибка получения сообщения', 'error'); }
