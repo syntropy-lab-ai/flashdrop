@@ -37,11 +37,20 @@ function generateRoomId() {
 io.on('connection', (socket) => {
   socket.on('auth', (data) => {
     const { password, token } = data;
-    if (token && validTokens.has(token)) {
-      socket.authenticated = true;
-      socket.emit('authSuccess', { token });
+    
+    // Если пришел токен (автоматический вход)
+    if (token) {
+      if (validTokens.has(token)) {
+        socket.authenticated = true;
+        socket.emit('authSuccess', { token });
+      } else {
+        // Токен невалидный (сервер перезапускался). Молча просим пароль.
+        socket.emit('tokenExpired');
+      }
       return;
     }
+
+    // Если пришел пароль (ручной ввод)
     if (password === ACCESS_PASSWORD) {
       const newToken = crypto.randomBytes(32).toString('hex');
       validTokens.add(newToken);
@@ -98,7 +107,6 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', (data) => {
     if (!socket.authenticated) return;
-    // ДОБАВЛЕНО: replyTo
     const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime, replyTo } = data;
     const room = rooms.get(roomId);
     if (!room) return;
@@ -117,7 +125,7 @@ io.on('connection', (socket) => {
       fileName,
       fileSize,
       fileMime,
-      replyTo, // ДОБАВЛЕНО: Пересылаем цитату
+      replyTo,
       timestamp: Date.now()
     });
   });
