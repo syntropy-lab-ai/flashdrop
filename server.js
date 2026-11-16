@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import crypto from 'crypto'; // Для генерации токенов
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,7 +14,7 @@ const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
-  maxHttpBufferSize: 50e6 // 50 MB
+  maxHttpBufferSize: 50e6
 });
 
 app.use(cors());
@@ -22,9 +22,7 @@ app.use(express.static(join(__dirname, 'public')));
 
 const rooms = new Map();
 const disconnectTimers = new Map();
-const validTokens = new Set(); // Хранилище токенов в памяти
-
-// Берем пароль из переменной окружения (или используем 'admin123' для локальных тестов)
+const validTokens = new Set();
 const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123';
 
 function generateRoomId() {
@@ -37,41 +35,31 @@ function generateRoomId() {
 }
 
 io.on('connection', (socket) => {
-  console.log('Пользователь подключился:', socket.id);
-
-  // АВТОРИЗАЦИЯ
   socket.on('auth', (data) => {
     const { password, token } = data;
-
-    // 1. Проверка по токену (если пользователь уже заходил)
     if (token && validTokens.has(token)) {
       socket.authenticated = true;
-      socket.token = token;
       socket.emit('authSuccess', { token });
       return;
     }
-
-    // 2. Проверка по паролю
     if (password === ACCESS_PASSWORD) {
       const newToken = crypto.randomBytes(32).toString('hex');
       validTokens.add(newToken);
       socket.authenticated = true;
-      socket.token = newToken;
       socket.emit('authSuccess', { token: newToken });
-      console.log('Успешная авторизация, выдан токен');
     } else {
       socket.emit('authError', { message: 'Неверный код доступа' });
     }
   });
 
   socket.on('createRoom', (data) => {
-    if (!socket.authenticated) return; // Защита
-    const { nick } = data;
+    if (!socket.authenticated) return;
+    const { nick, color } = data; // Получаем цвет
     const roomId = generateRoomId();
     rooms.set(roomId, {
       id: roomId,
       creator: socket.id,
-      users: new Map([[socket.id, { id: socket.id, nick }]]),
+      users: new Map([[socket.id, { id: socket.id, nick, color }]]), // Сохраняем цвет
       createdAt: Date.now()
     });
     socket.join(roomId);
@@ -79,12 +67,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('joinRoom', (data) => {
-    if (!socket.authenticated) return; // Защита
-    const { roomId, nick, isCreator } = data;
+    if (!socket.authenticated) return;
+    const { roomId, nick, isCreator, color } = data;
     const room = rooms.get(roomId);
     if (!room) {
       socket.emit('error', { message: 'Комната не найдена или уже закрыта' });
       return;
+    }
+
+    // Проверка на уникальность ника (если это не переподключение создателя)
+    if (!isCreator) {
+      const nickExists = Array.from(room.users.values()).some(u => u.nick.toLowerCase() === nick.toLowerCase());
+      if (nickExists) {
+        socket.emit('error', { message: 'Этот никнейм уже занят в комнате' });
+        return;
+      }
     }
 
     if (isCreator) {
@@ -95,7 +92,8 @@ io.on('connection', (socket) => {
       }
     }
 
-    room.users.set(socket.id, { id: socket.id, nick });
+    // Обновляем или добавляем пользователя
+    room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
     socket.join(roomId);
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
   });
@@ -112,6 +110,8 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('message', {
       userId: socket.id,
       nick: user.nick,
+      color: user.color, // Передаем цвет отправителя
+      isHost: room.creator === socket.id, // Передаем, является ли отправитель создателем
       encryptedMessage,
       type,
       duration,
@@ -137,7 +137,6 @@ io.on('connection', (socket) => {
     const { roomId } = data;
     const room = rooms.get(roomId);
     if (!room || room.creator !== socket.id) return;
-
     io.to(roomId).emit('roomEnded');
     rooms.delete(roomId);
     if (disconnectTimers.has(roomId)) {
@@ -147,12 +146,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    // ... (код дисконнекта и таймеров остается без изменений)
     for (const [roomId, room] of rooms.entries()) {
       if (room.users.has(socket.id)) {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
-        
         if (room.creator === socket.id) {
           const timer = setTimeout(() => {
             if (rooms.has(roomId)) {
