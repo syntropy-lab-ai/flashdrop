@@ -63,11 +63,10 @@
   .file-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .image-preview { max-width: 100%; border-radius: 12px; cursor: pointer; transition: transform 0.2s; margin-top: 4px; }
   .image-preview:hover { transform: scale(1.02); }
-  
-  /* Стили для палитры цветов */
   .color-option { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; transition: transform 0.2s, border 0.2s; border: 2px solid transparent; }
   .color-option:hover { transform: scale(1.15); }
   .color-option.selected { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+  .history-placeholder { font-style: italic; color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -103,13 +102,10 @@
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
         <input id="nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-3 text-base"/>
-        
-        <!-- Палитра цветов (Создание) -->
         <div class="flex justify-between items-center mb-6 px-1">
           <span class="text-xs text-[var(--muted)]">Цвет ника:</span>
           <div class="flex gap-2" id="color-picker-landing"></div>
         </div>
-
         <button id="create-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           Создать комнату
@@ -185,13 +181,10 @@
       <div class="bg-[var(--card)] border border-[var(--card-border)] rounded-3xl p-6 backdrop-blur-xl shadow-2xl animate-slide-up delay-100">
         <label class="block text-sm font-medium text-gray-300 mb-2 ml-1">Ваш никнейм</label>
         <input id="join-nick-input" type="text" placeholder="Придумайте никнейм" maxlength="20" class="input-field w-full rounded-xl px-4 py-3.5 text-white placeholder-gray-500 mb-3 text-base"/>
-        
-        <!-- Палитра цветов (Вход) -->
         <div class="flex justify-between items-center mb-6 px-1">
           <span class="text-xs text-[var(--muted)]">Цвет ника:</span>
           <div class="flex gap-2" id="color-picker-join"></div>
         </div>
-
         <button id="join-room-btn" class="btn-primary w-full text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
           Войти в комнату
@@ -344,9 +337,9 @@
 
   let socket = null, currentRoomId = null, encryptionKey = null, myNick = '', isCreator = false, typingTimeout = null;
   let mediaRecorder = null, audioChunks = [], isRecording = false, recordingTimer = null, recordingStartTime = 0;
-  let myColor = '#00d4ff'; // Цвет по умолчанию
+  let myColor = '#00d4ff';
+  let chatHistory = []; // Массив для сохранения истории
 
-  // Палитра цветов
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
   function initColorPickers() {
@@ -365,7 +358,6 @@
         btn.onclick = () => {
           myColor = c;
           localStorage.setItem('flashdrop_color', c);
-          // Обновляем выделение во всех пикерах
           document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
           document.querySelectorAll(`[data-color="${c}"]`).forEach(el => el.classList.add('selected'));
         };
@@ -394,8 +386,48 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  // Обновленные функции добавления сообщений (с цветом и короной)
-  function addMessage(nick, text, isSelf, ts, color, isHost) {
+  // --- СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ ИСТОРИИ ---
+  function saveHistory() {
+    try {
+      if (chatHistory.length > 100) chatHistory = chatHistory.slice(-100); // Лимит 100 сообщений
+      sessionStorage.setItem('flashdrop_chat_history', JSON.stringify(chatHistory));
+    } catch (e) {
+      console.warn('Не удалось сохранить историю (лимит памяти)');
+    }
+  }
+
+  function restoreHistory() {
+    const savedHistory = sessionStorage.getItem('flashdrop_chat_history');
+    if (!savedHistory) return;
+    try {
+      chatHistory = JSON.parse(savedHistory);
+      chatHistory.forEach(msg => {
+        if (msg.type === 'text') {
+          addMessage(msg.nick, msg.text, msg.isSelf, msg.ts, msg.color, msg.isHost, true);
+        } else if (msg.type === 'voice') {
+          addMediaPlaceholder(msg.nick, msg.ts, msg.color, msg.isHost, '🎤 Голосовое сообщение (история)');
+        } else if (msg.type === 'file') {
+          addMediaPlaceholder(msg.nick, msg.ts, msg.color, msg.isHost, `📎 Файл: ${msg.fileName} (история)`);
+        }
+      });
+    } catch (e) { console.error(e); }
+  }
+
+  function addMediaPlaceholder(nick, ts, color, isHost, text) {
+    const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
+    const msg = document.createElement('div');
+    msg.className = `message-bubble other p-3 rounded-2xl opacity-70`;
+    const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const crown = isHost ? ' 👑' : '';
+    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><div class="history-placeholder">${text}</div>`;
+    area.appendChild(msg); area.scrollTop = area.scrollHeight;
+  }
+
+  function addMessage(nick, text, isSelf, ts, color, isHost, isFromHistory = false) {
+    if (!isFromHistory) {
+      chatHistory.push({ type: 'text', nick, text, isSelf, ts, color, isHost });
+      saveHistory();
+    }
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
@@ -406,6 +438,9 @@
   }
 
   function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime, color, isHost) {
+    chatHistory.push({ type: 'voice', nick, duration, isSelf, ts, fileMime, color, isHost });
+    saveHistory();
+    
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msgId = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const msg = document.createElement('div');
@@ -442,6 +477,9 @@
   }
 
   function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost) {
+    chatHistory.push({ type: 'file', nick, fileName, fileSize, fileMime, isSelf, ts, color, isHost });
+    saveHistory();
+
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
@@ -471,6 +509,16 @@
     msg.className = 'text-center text-xs text-[var(--muted)] py-2 animate-slide-up';
     msg.innerHTML = `<span class="bg-white/5 px-3 py-1 rounded-full">${text}</span>`;
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
+  }
+
+  // --- ОЧИСТКА СЕССИИ ---
+  function clearSession() {
+    sessionStorage.removeItem('flashdrop_active_room');
+    sessionStorage.removeItem('flashdrop_chat_history');
+    currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
+    chatHistory = [];
+    document.getElementById('chat-area-1').innerHTML = '';
+    document.getElementById('chat-area-2').innerHTML = '';
   }
 
   async function sendMessage() {
@@ -565,6 +613,37 @@
       if (data.token) localStorage.setItem('flashdrop_token', data.token);
       initColorPickers();
       
+      // ПРОВЕРКА НА НАЛИЧИЕ СОХРАНЕННОЙ СЕССИИ (F5)
+      const savedRoom = sessionStorage.getItem('flashdrop_active_room');
+      if (savedRoom) {
+        try {
+          const room = JSON.parse(savedRoom);
+          currentRoomId = room.roomId;
+          window.encryptionKeyBase64 = room.key;
+          myNick = room.nick;
+          isCreator = room.isCreator;
+          myColor = room.color;
+
+          importKey(window.encryptionKeyBase64).then(k => {
+            encryptionKey = k;
+            socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator, color: myColor });
+            document.getElementById('chat-room-id').textContent = currentRoomId;
+            document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
+            document.getElementById('end-btn-text').textContent = isCreator ? 'Завершить' : 'Выйти';
+            
+            restoreHistory();
+            
+            showScreen(isCreator ? 'room-created' : 'chat');
+            showToast('Сессия восстановлена');
+          }).catch(() => {
+            clearSession();
+            showScreen('landing');
+          });
+          return;
+        } catch (e) { console.error(e); }
+      }
+
+      // Если сохраненной сессии нет, проверяем URL
       const p = new URLSearchParams(window.location.hash.substring(1));
       if (p.get('room') && p.get('key')) {
         currentRoomId = p.get('room'); window.encryptionKeyBase64 = p.get('key');
@@ -580,9 +659,8 @@
     socket.on('error', d => {
       showToast(d.message, 'error');
       if (d.message.includes('не найдена')) {
+        clearSession();
         window.history.replaceState(null, '', window.location.pathname);
-        currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
-        document.getElementById('chat-area-1').innerHTML = ''; document.getElementById('chat-area-2').innerHTML = '';
         showScreen('landing');
       }
     });
@@ -592,6 +670,12 @@
       document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
+      
+      // СОХРАНЯЕМ СЕССИЮ
+      sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
+        roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor
+      }));
+
       showScreen('room-created'); showToast('Комната успешно создана');
     });
 
@@ -626,7 +710,7 @@
 
     socket.on('userTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-text').textContent = `${d.nick} печатает`; document.getElementById('typing-indicator').classList.remove('hidden'); } });
     socket.on('userStoppedTyping', d => { if (d.nick !== myNick) { document.getElementById('typing-indicator').classList.add('hidden'); } });
-    socket.on('roomEnded', () => showScreen('ended'));
+    socket.on('roomEnded', () => { clearSession(); showScreen('ended'); });
   }
 
   document.getElementById('auth-btn').onclick = () => {
@@ -635,7 +719,7 @@
     socket.emit('auth', { password: code });
   };
   document.getElementById('access-code-input').onkeypress = (e) => { if (e.key === 'Enter') document.getElementById('auth-btn').click(); };
-  document.getElementById('logout-btn').onclick = () => { localStorage.removeItem('flashdrop_token'); window.location.reload(); };
+  document.getElementById('logout-btn').onclick = () => { localStorage.removeItem('flashdrop_token'); clearSession(); window.location.reload(); };
 
   document.getElementById('create-btn').onclick = async () => {
     ensureAudioContext();
@@ -643,7 +727,6 @@
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = true;
     encryptionKey = await generateKey(); window.encryptionKeyBase64 = await exportKey(encryptionKey);
-    // Передаем цвет на сервер
     socket.emit('createRoom', { nick, color: myColor });
   };
   
@@ -665,11 +748,17 @@
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = false;
-    // Передаем цвет на сервер
     socket.emit('joinRoom', { roomId: currentRoomId, nick, isCreator: false, color: myColor });
+    
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
     document.getElementById('end-btn-text').textContent = 'Выйти';
+    
+    // СОХРАНЯЕМ СЕССИЮ
+    sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
+      roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor
+    }));
+
     showScreen('chat');
   };
 
@@ -709,15 +798,22 @@
   document.getElementById('end-room-btn-2').onclick = confirmEnd;
   document.getElementById('cancel-end-btn').onclick = () => document.getElementById('modal').classList.add('hidden');
   document.getElementById('confirm-end-btn').onclick = () => {
-    if (isCreator) socket.emit('endRoom', { roomId: currentRoomId });
-    else { socket.disconnect(); socket = null; showScreen('landing'); showToast('Вы вышли'); }
+    if (isCreator) {
+      socket.emit('endRoom', { roomId: currentRoomId });
+      clearSession();
+      showScreen('ended');
+    } else {
+      socket.disconnect(); socket = null; 
+      clearSession();
+      showScreen('landing'); showToast('Вы вышли');
+    }
     document.getElementById('modal').classList.add('hidden');
   };
+  
   document.getElementById('new-room-btn').onclick = () => {
     if (socket) { socket.disconnect(); socket = null; }
-    currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
+    clearSession();
     document.querySelectorAll('audio, img').forEach(el => { if (el.src && el.src.startsWith('blob:')) URL.revokeObjectURL(el.src); });
-    document.getElementById('chat-area-1').innerHTML = ''; document.getElementById('chat-area-2').innerHTML = '';
     window.location.href = window.location.pathname;
   };
 
