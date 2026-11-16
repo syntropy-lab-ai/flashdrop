@@ -363,6 +363,7 @@
   let myColor = '#00d4ff';
   let chatHistory = [];
   let currentReplyTo = null;
+  let isRestoringSession = false; // <-- Флаг для тихого восстановления
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -717,7 +718,6 @@
 
     socket.on('connect_error', () => showToast('Ошибка подключения к серверу', 'error'));
 
-    // ИСПРАВЛЕНИЕ: Обработка просроченного токена (без ошибки)
     socket.on('tokenExpired', () => {
       localStorage.removeItem('flashdrop_token');
       showScreen('lock');
@@ -739,6 +739,7 @@
 
           importKey(window.encryptionKeyBase64).then(k => {
             encryptionKey = k;
+            isRestoringSession = true; // ВКЛЮЧАЕМ ТИХИЙ РЕЖИМ
             socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator, color: myColor });
             
             document.getElementById('chat-room-id').textContent = currentRoomId;
@@ -755,11 +756,15 @@
             showScreen(isCreator ? 'room-created' : 'chat');
             showToast('Сессия восстановлена');
           }).catch(() => {
+            isRestoringSession = false;
             clearSession();
             showScreen('landing');
           });
           return;
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+          isRestoringSession = false;
+          console.error(e); 
+        }
       }
 
       const p = new URLSearchParams(window.location.hash.substring(1));
@@ -775,6 +780,16 @@
     socket.on('authError', (d) => { showToast(d.message, 'error'); localStorage.removeItem('flashdrop_token'); showScreen('lock'); });
 
     socket.on('error', d => {
+      if (isRestoringSession && d.message.includes('не найдена')) {
+        // ТИХО очищаем сессию, если старая комната больше не существует
+        isRestoringSession = false;
+        clearSession();
+        window.history.replaceState(null, '', window.location.pathname);
+        showScreen('landing');
+        return;
+      }
+
+      isRestoringSession = false;
       showToast(d.message, 'error');
       if (d.message.includes('не найдена')) {
         clearSession();
@@ -797,6 +812,7 @@
     });
 
     socket.on('userJoined', d => {
+      isRestoringSession = false; // Успешно присоединились, сбрасываем флаг
       const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
       if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
       addSystemMessage(`👤 ${d.nick} присоединился`);
