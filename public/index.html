@@ -393,6 +393,7 @@
   let isRestoringSession = false;
   let isEphemeralMode = false;
   let isSocketReady = false; 
+  let isFirstConnect = true; // Флаг для первого подключения
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -414,17 +415,16 @@
   lightbox.addEventListener('click', closeLightbox);
   lightboxClose.addEventListener('click', closeLightbox);
 
-  // ФУНКЦИЯ ОЖИДАНИЯ СОЕДИНЕНИЯ
   async function waitForSocket() {
-    if (isSocketReady) return;
+    if (isSocketReady && socket.connected) return;
     
     return new Promise((resolve, reject) => {
       let attempts = 0;
       const interval = setInterval(() => {
-        if (isSocketReady) {
+        if (isSocketReady && socket.connected) {
           clearInterval(interval);
           resolve();
-        } else if (attempts >= 15) { // Ждем максимум 15 секунд
+        } else if (attempts >= 15) { 
           clearInterval(interval);
           reject(new Error('Timeout'));
         }
@@ -483,7 +483,11 @@
     c.appendChild(t);
     setTimeout(() => { t.style.animation = 'fade-out 0.3s ease forwards'; setTimeout(() => t.remove(), 300); }, 3000);
   }
-  function showScreen(name) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + name).classList.add('active'); window.scrollTo(0, 0); }
+  function showScreen(name) { 
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+    document.getElementById('screen-' + name).classList.add('active'); 
+    if (isFirstConnect) window.scrollTo(0, 0); 
+  }
   function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   function formatDuration(s) { return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`; }
   function formatSize(bytes) {
@@ -568,6 +572,9 @@
   }
 
   function restoreHistory() {
+    const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
+    if (area.children.length > 0) return; // Не дублируем историю, если она уже есть
+
     const savedHistory = sessionStorage.getItem('flashdrop_chat_history');
     if (!savedHistory) return;
     try {
@@ -745,7 +752,7 @@
     const text = input.value.trim();
     if (!text) return;
 
-    if (!isSocketReady) {
+    if (!isSocketReady || !socket.connected) {
       showToast('Восстановление соединения... Подождите.', 'success');
       try { await waitForSocket(); } 
       catch (e) { showToast('Соединение не восстановлено.', 'error'); return; }
@@ -768,7 +775,7 @@
     if (!file) return;
     if (file.size > 35 * 1024 * 1024) { showToast('Файл слишком большой (макс. 35 МБ)', 'error'); event.target.value = ''; return; }
 
-    if (!isSocketReady) {
+    if (!isSocketReady || !socket.connected) {
       showToast('Восстановление соединения... Подождите.', 'success');
       try { await waitForSocket(); } 
       catch (e) { showToast('Соединение не восстановлено. Попробуйте еще раз.', 'error'); event.target.value = ''; return; }
@@ -792,7 +799,7 @@
   async function startRecording() {
     if (isRecording) return;
     
-    if (!isSocketReady) {
+    if (!isSocketReady || !socket.connected) {
       showToast('Восстановление соединения...', 'success');
       try { await waitForSocket(); } 
       catch (e) { showToast('Соединение не восстановлено.', 'error'); return; }
@@ -809,7 +816,7 @@
         const dur = (Date.now() - recordingStartTime) / 1000;
         if (dur < 0.5) { showToast('Слишком короткая запись', 'error'); stream.getTracks().forEach(t => t.stop()); return; }
         
-        if (!isSocketReady) {
+        if (!isSocketReady || !socket.connected) {
           showToast('Восстановление соединения...', 'success');
           try { await waitForSocket(); } 
           catch (e) { showToast('Соединение не восстановлено.', 'error'); stream.getTracks().forEach(t => t.stop()); return; }
@@ -911,7 +918,10 @@
             restoreHistory();
             
             showScreen(isCreator ? 'room-created' : 'chat');
-            showToast('Сессия восстановлена');
+            if (isFirstConnect) {
+              showToast('Сессия восстановлена');
+              isFirstConnect = false;
+            }
             isSocketReady = true;
           }).catch(() => {
             isRestoringSession = false;
@@ -933,10 +943,12 @@
           document.getElementById('join-room-id').textContent = currentRoomId; 
           showScreen('join'); 
           isSocketReady = true; 
+          isFirstConnect = false;
         }).catch(() => { showToast('Ошибка ключа', 'error'); window.history.replaceState(null, '', window.location.pathname); showScreen('landing'); });
       } else {
         showScreen('landing');
         isSocketReady = true;
+        isFirstConnect = false;
       }
     });
 
@@ -948,6 +960,7 @@
         clearSession();
         window.history.replaceState(null, '', window.location.pathname);
         showScreen('landing');
+        isSocketReady = false;
         return;
       }
 
@@ -957,6 +970,7 @@
         clearSession();
         window.history.replaceState(null, '', window.location.pathname);
         showScreen('landing');
+        isSocketReady = false;
       }
     });
 
@@ -976,6 +990,7 @@
 
     socket.on('userJoined', d => {
       isRestoringSession = false;
+      isSocketReady = true;
       const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
       if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
       addSystemMessage(`👤 ${d.nick} присоединился`);
