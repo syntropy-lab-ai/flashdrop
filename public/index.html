@@ -73,6 +73,11 @@
   .reply-quote .text { color: #a0a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ephemeral-active { color: #ff4757 !important; background-color: rgba(255, 71, 87, 0.15) !important; border-color: rgba(255, 71, 87, 0.3) !important; }
   
+  /* Стили для статуса онлайн */
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; margin-bottom: 1px; transition: background-color 0.3s; }
+  .status-dot.online { background-color: var(--success); box-shadow: 0 0 6px var(--success); }
+  .status-dot.offline { background-color: var(--muted); }
+
   .lightbox { position: fixed; inset: 0; z-index: 10000; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); opacity: 0; transition: opacity 0.3s ease; }
   .lightbox.active { display: flex; opacity: 1; }
   .lightbox-img { max-width: 85vw; max-height: 75vh; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); object-fit: contain; z-index: 1; }
@@ -393,7 +398,8 @@
   let isRestoringSession = false;
   let isEphemeralMode = false;
   let isSocketReady = false; 
-  let isFirstConnect = true; // Флаг для первого подключения
+  let isFirstConnect = true;
+  const usersStatus = {}; // Хранилище статусов
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -497,6 +503,24 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
+  // --- ЛОГИКА СТАТУСА ОНЛАЙН ---
+  function getStatusDot(nick) {
+    const isOnline = usersStatus[nick] !== false;
+    return `<span class="status-dot ${isOnline ? 'online' : 'offline'}" data-nick="${escapeHtml(nick)}"></span>`;
+  }
+
+  function updateHeaderStatus() {
+    const infoEl = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
+    if (!isCreator && infoEl) {
+      // Для участника обновляем шапку
+      const otherUser = Object.keys(usersStatus).find(n => n !== myNick);
+      if (otherUser) {
+        infoEl.innerHTML = `${currentRoomId} · <span style="display:inline-flex;align-items:center;">${otherUser} ${getStatusDot(otherUser)}</span>`;
+      }
+    }
+  }
+  // -----------------------------
+
   function setReplyTo(msg) {
     currentReplyTo = msg;
     const suffix = isCreator ? '1' : '2';
@@ -573,7 +597,7 @@
 
   function restoreHistory() {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
-    if (area.children.length > 0) return; // Не дублируем историю, если она уже есть
+    if (area.children.length > 0) return;
 
     const savedHistory = sessionStorage.getItem('flashdrop_chat_history');
     if (!savedHistory) return;
@@ -603,7 +627,7 @@
       replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
     }
 
-    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><div class="history-placeholder">${text}</div>`;
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}${getStatusDot(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><div class="history-placeholder">${text}</div>`;
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
@@ -624,7 +648,7 @@
       replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
     }
 
-    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}${getStatusDot(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
     
     attachReplyListeners(msg, { nick, text: text.substring(0, 40) + (text.length > 40 ? '...' : ''), color }, !!expiresIn);
     
@@ -652,7 +676,7 @@
       replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
     }
 
-    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}${getStatusDot(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>
       <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
     
     attachReplyListeners(msg, { nick, text: '🎤 Голосовое сообщение', color }, !!expiresIn);
@@ -703,7 +727,7 @@
       replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
     }
 
-    const header = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>`;
+    const header = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}${getStatusDot(nick)}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}${timerIcon}</span></div>`;
     
     if (fileMime && fileMime.startsWith('image/')) {
       const imgUrl = URL.createObjectURL(new Blob([fileData], { type: fileMime }));
@@ -745,6 +769,7 @@
     cancelReply();
     document.getElementById('chat-area-1').innerHTML = '';
     document.getElementById('chat-area-2').innerHTML = '';
+    for (let key in usersStatus) delete usersStatus[key];
   }
 
   async function sendMessage() {
@@ -878,6 +903,12 @@
 
     socket.on('disconnect', () => {
       isSocketReady = false;
+      // Помечаем всех как "Не в сети" локально при обрыве
+      for (let key in usersStatus) usersStatus[key] = false;
+      document.querySelectorAll('.status-dot').forEach(el => {
+        el.classList.remove('online');
+        el.classList.add('offline');
+      });
     });
 
     socket.on('connect_error', () => showToast('Ошибка подключения к серверу', 'error'));
@@ -904,10 +935,11 @@
           importKey(window.encryptionKeyBase64).then(k => {
             encryptionKey = k;
             isRestoringSession = true;
+            usersStatus[myNick] = true; // Я онлайн
             socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator, color: myColor });
             
             document.getElementById('chat-room-id').textContent = currentRoomId;
-            document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
+            document.getElementById('chat-header-info').innerHTML = `${currentRoomId} · <span style="display:inline-flex;align-items:center;">1 участник <span class="status-dot online"></span></span>`;
             document.getElementById('end-btn-text').textContent = isCreator ? 'Завершить' : 'Выйти';
             
             if (isCreator) {
@@ -976,6 +1008,7 @@
 
     socket.on('roomCreated', d => {
       currentRoomId = d.roomId;
+      usersStatus[myNick] = true;
       document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
@@ -991,15 +1024,33 @@
     socket.on('userJoined', d => {
       isRestoringSession = false;
       isSocketReady = true;
+      usersStatus[d.nick] = true;
+      
       const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
+      if (isCreator) el.textContent = d.userCount; 
+      else updateHeaderStatus();
+      
       addSystemMessage(`👤 ${d.nick} присоединился`);
     });
 
     socket.on('userLeft', d => {
       const el = document.getElementById(isCreator ? 'user-count-1' : 'chat-header-info');
-      if (isCreator) el.textContent = d.userCount; else document.getElementById('chat-header-info').textContent = `${currentRoomId} · ${d.userCount} участник`;
+      if (isCreator) el.textContent = d.userCount; 
+      else updateHeaderStatus();
+      
       addSystemMessage(`👋 ${d.nick} покинул комнату`);
+    });
+
+    socket.on('userStatusChange', d => {
+      usersStatus[d.nick] = d.online;
+      
+      // Обновляем все точки в сообщениях
+      document.querySelectorAll(`.status-dot[data-nick="${d.nick}"]`).forEach(el => {
+        el.className = `status-dot ${d.online ? 'online' : 'offline'}`;
+      });
+      
+      // Обновляем шапку, если это собеседник
+      if (d.nick !== myNick) updateHeaderStatus();
     });
 
     socket.on('message', async d => {
@@ -1062,10 +1113,11 @@
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = false;
+    usersStatus[myNick] = true;
     socket.emit('joinRoom', { roomId: currentRoomId, nick, isCreator: false, color: myColor });
     
     document.getElementById('chat-room-id').textContent = currentRoomId;
-    document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
+    updateHeaderStatus();
     document.getElementById('end-btn-text').textContent = 'Выйти';
     
     sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
