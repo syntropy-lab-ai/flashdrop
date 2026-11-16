@@ -21,7 +21,8 @@ app.use(cors());
 app.use(express.static(join(__dirname, 'public')));
 
 const rooms = new Map();
-const disconnectTimers = new Map();
+const disconnectTimers = new Map(); // Таймеры для закрытия комнаты
+const presenceTimers = new Map();   // Таймеры для статуса "В сети"
 const validTokens = new Set();
 const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123';
 
@@ -96,14 +97,20 @@ io.on('connection', (socket) => {
       }
     }
 
+    const presenceKey = roomId + '_' + nick;
+    if (presenceTimers.has(presenceKey)) {
+      clearTimeout(presenceTimers.get(presenceKey));
+      presenceTimers.delete(presenceKey);
+    }
+
     room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
     socket.join(roomId);
+    socket.broadcast.to(roomId).emit('userStatusChange', { nick, online: true });
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
   });
 
   socket.on('sendMessage', (data) => {
     if (!socket.authenticated) return;
-    // ДОБАВЛЕНО: expiresIn (время жизни сообщения)
     const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime, replyTo, expiresIn } = data;
     const room = rooms.get(roomId);
     if (!room) return;
@@ -123,7 +130,7 @@ io.on('connection', (socket) => {
       fileSize,
       fileMime,
       replyTo,
-      expiresIn, // ДОБАВЛЕНО
+      expiresIn,
       timestamp: Date.now()
     });
   });
@@ -145,6 +152,7 @@ io.on('connection', (socket) => {
     if (!room || room.creator !== socket.id) return;
     io.to(roomId).emit('roomEnded');
     rooms.delete(roomId);
+    
     if (disconnectTimers.has(roomId)) {
       clearTimeout(disconnectTimers.get(roomId));
       disconnectTimers.delete(roomId);
@@ -156,6 +164,19 @@ io.on('connection', (socket) => {
       if (room.users.has(socket.id)) {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
+
+        // Статус "В сети" (задержка 5 секунд)
+        const presenceKey = roomId + '_' + user.nick;
+        if (presenceTimers.has(presenceKey)) clearTimeout(presenceTimers.get(presenceKey));
+        
+        presenceTimers.set(presenceKey, setTimeout(() => {
+          if (rooms.has(roomId)) {
+            io.to(roomId).emit('userStatusChange', { nick: user.nick, online: false });
+          }
+          presenceTimers.delete(presenceKey);
+        }, 5000));
+
+        // Логика закрытия комнаты
         if (room.creator === socket.id) {
           const timer = setTimeout(() => {
             if (rooms.has(roomId)) {
@@ -165,6 +186,7 @@ io.on('connection', (socket) => {
           }, 30000);
           disconnectTimers.set(roomId, timer);
         } else {
+          // Счетчик участников обновляем сразу, даже если он еще "онлайн"
           io.to(roomId).emit('userLeft', { nick: user.nick, userCount: room.users.size });
         }
         break;
