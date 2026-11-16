@@ -34,7 +34,7 @@
   .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3); }
   .btn-primary:active { transform: translateY(0); }
   @keyframes msg-pop { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  .message-bubble { animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-width: 85%; word-wrap: break-word; }
+  .message-bubble { animation: msg-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-width: 85%; word-wrap: break-word; cursor: pointer; user-select: none; -webkit-user-select: none; }
   .message-bubble.self { background: linear-gradient(135deg, rgba(0, 119, 255, 0.2) 0%, rgba(0, 212, 255, 0.1) 100%); border: 1px solid rgba(0, 212, 255, 0.3); margin-left: auto; }
   .message-bubble.other { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); margin-right: auto; }
   ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #2d3348; border-radius: 3px; }
@@ -67,6 +67,11 @@
   .color-option:hover { transform: scale(1.15); }
   .color-option.selected { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
   .history-placeholder { font-style: italic; color: var(--muted); font-size: 12px; }
+  
+  /* Стили для цитат (Reply) */
+  .reply-quote { background: rgba(0, 0, 0, 0.3); border-left: 3px solid; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
+  .reply-quote .nick { font-weight: 600; font-size: 10px; margin-bottom: 2px; }
+  .reply-quote .text { color: #a0a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
@@ -153,18 +158,29 @@
       </div>
       <div id="chat-area-1" class="flex-1 space-y-3 mb-4 overflow-y-auto pr-1 min-h-[250px]"></div>
       
-      <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 shadow-2xl items-center">
-        <input type="file" id="file-input-1" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
-        <button id="file-btn-1" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-        </button>
-        <input id="msg-input-1" type="text" placeholder="Сообщение..." autocomplete="off" class="input-field flex-1 min-w-0 bg-transparent border-0 rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-white placeholder-gray-500 text-sm"/>
-        <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Голосовое сообщение (удерживайте)">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
-        </button>
-        <button id="send-btn-1" class="btn-primary text-white p-2.5 sm:px-4 sm:py-3 rounded-xl flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-        </button>
+      <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex flex-col shadow-2xl">
+        <!-- Плашка ответа -->
+        <div id="reply-banner-1" class="hidden mb-2 mx-1 p-2 bg-black/40 border border-[var(--card-border)] rounded-xl flex items-center gap-3">
+          <div class="flex-1 min-w-0">
+            <div id="reply-nick-1" class="text-[10px] font-bold"></div>
+            <div id="reply-text-1" class="text-xs text-gray-400 truncate"></div>
+          </div>
+          <button class="cancel-reply-btn text-gray-400 hover:text-white p-1" data-target="1">✕</button>
+        </div>
+        
+        <div class="flex gap-1.5 sm:gap-2 items-center w-full">
+          <input type="file" id="file-input-1" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
+          <button id="file-btn-1" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+          </button>
+          <input id="msg-input-1" type="text" placeholder="Сообщение..." autocomplete="off" class="input-field flex-1 min-w-0 bg-transparent border-0 rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-white placeholder-gray-500 text-sm"/>
+          <button id="voice-btn-1" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Голосовое сообщение (удерживайте)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+          </button>
+          <button id="send-btn-1" class="btn-primary text-white p-2.5 sm:px-4 sm:py-3 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          </button>
+        </div>
       </div>
     </main>
   </div>
@@ -220,18 +236,29 @@
         <div class="flex gap-1 items-center h-3"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
       </div>
       
-      <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 shadow-2xl items-center">
-        <input type="file" id="file-input-2" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
-        <button id="file-btn-2" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-        </button>
-        <input id="msg-input-2" type="text" placeholder="Сообщение..." autocomplete="off" class="input-field flex-1 min-w-0 bg-transparent border-0 rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-white placeholder-gray-500 text-sm"/>
-        <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Голосовое сообщение (удерживайте)">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
-        </button>
-        <button id="send-btn-2" class="btn-primary text-white p-2.5 sm:px-4 sm:py-3 rounded-xl flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-        </button>
+      <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex flex-col shadow-2xl">
+        <!-- Плашка ответа -->
+        <div id="reply-banner-2" class="hidden mb-2 mx-1 p-2 bg-black/40 border border-[var(--card-border)] rounded-xl flex items-center gap-3">
+          <div class="flex-1 min-w-0">
+            <div id="reply-nick-2" class="text-[10px] font-bold"></div>
+            <div id="reply-text-2" class="text-xs text-gray-400 truncate"></div>
+          </div>
+          <button class="cancel-reply-btn text-gray-400 hover:text-white p-1" data-target="2">✕</button>
+        </div>
+
+        <div class="flex gap-1.5 sm:gap-2 items-center w-full">
+          <input type="file" id="file-input-2" class="hidden" accept="image/*,.pdf,.txt,.doc,.docx,.zip,.rar" />
+          <button id="file-btn-2" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Отправить файл">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+          </button>
+          <input id="msg-input-2" type="text" placeholder="Сообщение..." autocomplete="off" class="input-field flex-1 min-w-0 bg-transparent border-0 rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-white placeholder-gray-500 text-sm"/>
+          <button id="voice-btn-2" class="bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-3 rounded-xl transition flex items-center justify-center flex-shrink-0" title="Голосовое сообщение (удерживайте)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+          </button>
+          <button id="send-btn-2" class="btn-primary text-white p-2.5 sm:px-4 sm:py-3 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          </button>
+        </div>
       </div>
     </main>
   </div>
@@ -339,6 +366,7 @@
   let mediaRecorder = null, audioChunks = [], isRecording = false, recordingTimer = null, recordingStartTime = 0;
   let myColor = '#00d4ff';
   let chatHistory = [];
+  let currentReplyTo = null; // Переменная для хранения цитаты
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -386,12 +414,63 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
+  // --- ЛОГИКА ОТВЕТОВ (REPLY) ---
+  function setReplyTo(msg) {
+    currentReplyTo = msg;
+    const suffix = isCreator ? '1' : '2';
+    
+    const banner = document.getElementById(`reply-banner-${suffix}`);
+    const nickEl = document.getElementById(`reply-nick-${suffix}`);
+    const textEl = document.getElementById(`reply-text-${suffix}`);
+    const input = document.getElementById(`msg-input-${suffix}`);
+
+    if (banner && nickEl && textEl) {
+      nickEl.textContent = msg.nick;
+      nickEl.style.color = msg.color;
+      textEl.textContent = msg.text;
+      banner.classList.remove('hidden');
+      input.focus();
+    }
+  }
+
+  function cancelReply() {
+    currentReplyTo = null;
+    document.getElementById('reply-banner-1').classList.add('hidden');
+    document.getElementById('reply-banner-2').classList.add('hidden');
+  }
+
+  document.querySelectorAll('.cancel-reply-btn').forEach(btn => {
+    btn.onclick = cancelReply;
+  });
+
+  function attachReplyListeners(el, msgData) {
+    // ПК: Двойной клик
+    el.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      if (window.getSelection().toString().length > 0) return; // Игнорируем, если юзер выделяет текст
+      setReplyTo(msgData);
+    });
+
+    // Мобилка: Долгое нажатие (Long Press)
+    let touchTimer;
+    el.addEventListener('touchstart', (e) => {
+      touchTimer = setTimeout(() => {
+        setReplyTo(msgData);
+        // Легкая вибрация (если поддерживается)
+        if (navigator.vibrate) navigator.vibrate(50);
+      }, 500); // 500мс
+    }, { passive: true });
+    el.addEventListener('touchend', () => clearTimeout(touchTimer));
+    el.addEventListener('touchmove', () => clearTimeout(touchTimer));
+  }
+  // ------------------------------
+
   function saveHistory() {
     try {
       if (chatHistory.length > 100) chatHistory = chatHistory.slice(-100);
       sessionStorage.setItem('flashdrop_chat_history', JSON.stringify(chatHistory));
     } catch (e) {
-      console.warn('Не удалось сохранить историю (лимит памяти)');
+      console.warn('Не удалось сохранить историю');
     }
   }
 
@@ -402,29 +481,35 @@
       chatHistory = JSON.parse(savedHistory);
       chatHistory.forEach(msg => {
         if (msg.type === 'text') {
-          addMessage(msg.nick, msg.text, msg.isSelf, msg.ts, msg.color, msg.isHost, true);
+          addMessage(msg.nick, msg.text, msg.isSelf, msg.ts, msg.color, msg.isHost, msg.replyTo, true);
         } else if (msg.type === 'voice') {
-          addMediaPlaceholder(msg.nick, msg.ts, msg.color, msg.isHost, '🎤 Голосовое сообщение (история)');
+          addMediaPlaceholder(msg.nick, msg.ts, msg.color, msg.isHost, '🎤 Голосовое сообщение (история)', msg.replyTo);
         } else if (msg.type === 'file') {
-          addMediaPlaceholder(msg.nick, msg.ts, msg.color, msg.isHost, `📎 Файл: ${msg.fileName} (история)`);
+          addMediaPlaceholder(msg.nick, msg.ts, msg.color, msg.isHost, `📎 Файл: ${msg.fileName} (история)`, msg.replyTo);
         }
       });
     } catch (e) { console.error(e); }
   }
 
-  function addMediaPlaceholder(nick, ts, color, isHost, text) {
+  function addMediaPlaceholder(nick, ts, color, isHost, text, replyTo) {
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
     const msg = document.createElement('div');
     msg.className = `message-bubble other p-3 rounded-2xl opacity-70`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
-    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><div class="history-placeholder">${text}</div>`;
+    
+    let replyHtml = '';
+    if (replyTo) {
+      replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
+    }
+
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><div class="history-placeholder">${text}</div>`;
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addMessage(nick, text, isSelf, ts, color, isHost, isFromHistory = false) {
+  function addMessage(nick, text, isSelf, ts, color, isHost, replyTo, isFromHistory = false) {
     if (!isFromHistory) {
-      chatHistory.push({ type: 'text', nick, text, isSelf, ts, color, isHost });
+      chatHistory.push({ type: 'text', nick, text, isSelf, ts, color, isHost, replyTo });
       saveHistory();
     }
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
@@ -432,12 +517,21 @@
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
-    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
+
+    let replyHtml = '';
+    if (replyTo) {
+      replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
+    }
+
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div><p class="text-sm text-gray-100 leading-relaxed break-words">${escapeHtml(text)}</p>`;
+    
+    attachReplyListeners(msg, { nick, text: text.substring(0, 40) + (text.length > 40 ? '...' : ''), color });
+    
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime, color, isHost) {
-    chatHistory.push({ type: 'voice', nick, duration, isSelf, ts, fileMime, color, isHost });
+  function addVoiceMessage(nick, audioData, duration, isSelf, ts, fileMime, color, isHost, replyTo) {
+    chatHistory.push({ type: 'voice', nick, duration, isSelf, ts, fileMime, color, isHost, replyTo });
     saveHistory();
     
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
@@ -446,8 +540,17 @@
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
-    msg.innerHTML = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
+    
+    let replyHtml = '';
+    if (replyTo) {
+      replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
+    }
+
+    msg.innerHTML = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>
       <div class="media-player"><button id="play-${msgId}"><svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><div class="progress-bar" id="prog-${msgId}"><div class="progress-fill" id="progf-${msgId}" style="width:0%"></div></div><span class="duration" id="dur-${msgId}">${formatDuration(duration)}</span></div>`;
+    
+    attachReplyListeners(msg, { nick, text: '🎤 Голосовое сообщение', color });
+    
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
     
     const mimeType = fileMime || 'audio/webm';
@@ -475,8 +578,8 @@
     bar.onclick = (e) => { const dur = getDuration(); if (dur > 0) { const rect = bar.getBoundingClientRect(); const percent = (e.clientX - rect.left) / rect.width; audio.currentTime = percent * dur; fill.style.width = `${percent * 100}%`; } };
   }
 
-  function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost) {
-    chatHistory.push({ type: 'file', nick, fileName, fileSize, fileMime, isSelf, ts, color, isHost });
+  function addFileMessage(nick, fileData, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo) {
+    chatHistory.push({ type: 'file', nick, fileName, fileSize, fileMime, isSelf, ts, color, isHost, replyTo });
     saveHistory();
 
     const area = document.getElementById(isCreator ? 'chat-area-1' : 'chat-area-2');
@@ -484,7 +587,13 @@
     msg.className = `message-bubble ${isSelf ? 'self' : 'other'} p-3 rounded-2xl`;
     const time = new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const crown = isHost ? ' 👑' : '';
-    const header = `<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>`;
+    
+    let replyHtml = '';
+    if (replyTo) {
+      replyHtml = `<div class="reply-quote" style="border-left-color: ${replyTo.color}"><div class="nick" style="color: ${replyTo.color}">${escapeHtml(replyTo.nick)}</div><div class="text">${escapeHtml(replyTo.text)}</div></div>`;
+    }
+
+    const header = `${replyHtml}<div class="flex items-center justify-between mb-1.5 gap-4"><span class="text-xs font-bold" style="color: ${color}">${escapeHtml(nick)}${crown}</span><span class="text-[10px] text-gray-500 mono flex-shrink-0">${time}</span></div>`;
     
     if (fileMime && fileMime.startsWith('image/')) {
       const imgUrl = URL.createObjectURL(new Blob([fileData], { type: fileMime }));
@@ -495,10 +604,16 @@
       const dlId = `dl-${Date.now()}`;
       msg.innerHTML = `${header}<div class="file-card"><div class="file-icon text-xl">${icon}</div><div class="file-info"><div class="file-name">${escapeHtml(fileName)}</div><div class="file-size">${formatSize(fileSize)}</div></div><button id="${dlId}" class="download-btn" title="Скачать"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button></div>`;
       area.appendChild(msg); area.scrollTop = area.scrollHeight;
+      
+      attachReplyListeners(msg, { nick, text: `📎 ${fileName}`, color });
+
       const blob = new Blob([fileData], { type: fileMime || 'application/octet-stream' });
       document.getElementById(dlId).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click(); URL.revokeObjectURL(a.href); };
       return;
     }
+    
+    attachReplyListeners(msg, { nick, text: `🖼️ ${fileName}`, color });
+    
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
@@ -515,6 +630,7 @@
     sessionStorage.removeItem('flashdrop_chat_history');
     currentRoomId = null; encryptionKey = null; myNick = ''; isCreator = false; window.encryptionKeyBase64 = null;
     chatHistory = [];
+    cancelReply();
     document.getElementById('chat-area-1').innerHTML = '';
     document.getElementById('chat-area-2').innerHTML = '';
   }
@@ -525,9 +641,11 @@
     if (!text) return;
     try {
       const enc = await encryptMessage(encryptionKey, text);
-      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'text' });
+      // ОТПРАВЛЯЕМ replyTo
+      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo });
       input.value = ''; socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
       playNotificationSound('outgoing');
+      cancelReply();
     } catch (err) { showToast('Ошибка шифрования: ' + err.message, 'error'); }
   }
 
@@ -539,8 +657,10 @@
     try {
       const arrayBuffer = await file.arrayBuffer();
       const enc = await encryptBinary(encryptionKey, new Uint8Array(arrayBuffer));
-      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type });
+      // ОТПРАВЛЯЕМ replyTo
+      socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type, replyTo: currentReplyTo });
       playNotificationSound('outgoing'); showToast('Файл отправлен');
+      cancelReply();
     } catch (err) { showToast('Ошибка отправки файла: ' + err.message, 'error'); }
     event.target.value = '';
   }
@@ -561,8 +681,10 @@
         const buf = await blob.arrayBuffer();
         try {
           const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
-          socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm' });
+          // ОТПРАВЛЯЕМ replyTo
+          socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm', replyTo: currentReplyTo });
           playNotificationSound('outgoing'); showToast(`Голосовое отправлено (${formatDuration(dur)})`);
+          cancelReply();
         } catch (err) { showToast('Ошибка шифрования аудио: ' + err.message, 'error'); }
         stream.getTracks().forEach(t => t.stop());
       };
@@ -629,7 +751,6 @@
             document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
             document.getElementById('end-btn-text').textContent = isCreator ? 'Завершить' : 'Выйти';
             
-            // ВОТ ТУТ ИСПРАВЛЕНИЕ: Возвращаем ссылку, если это создатель
             if (isCreator) {
                document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
                document.getElementById('room-id-display-1').textContent = currentRoomId;
@@ -698,13 +819,13 @@
         const isSelf = d.userId === socket.id;
         if (d.type === 'voice') {
           const audioData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime, d.color, d.isHost);
+          addVoiceMessage(d.nick, audioData, d.duration || 0, isSelf, d.timestamp, d.fileMime, d.color, d.isHost, d.replyTo);
         } else if (d.type === 'file') {
           const fileData = await decryptBinary(encryptionKey, d.encryptedMessage);
-          addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp, d.color, d.isHost);
+          addFileMessage(d.nick, fileData, d.fileName, d.fileSize, d.fileMime, isSelf, d.timestamp, d.color, d.isHost, d.replyTo);
         } else {
           const text = await decryptMessage(encryptionKey, d.encryptedMessage);
-          addMessage(d.nick, text, isSelf, d.timestamp, d.color, d.isHost);
+          addMessage(d.nick, text, isSelf, d.timestamp, d.color, d.isHost, d.replyTo);
         }
         if (!isSelf) playNotificationSound('incoming');
       } catch (err) { showToast('Ошибка получения сообщения', 'error'); }
