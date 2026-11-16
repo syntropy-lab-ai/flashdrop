@@ -54,12 +54,12 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', (data) => {
     if (!socket.authenticated) return;
-    const { nick, color } = data; // Получаем цвет
+    const { nick, color } = data;
     const roomId = generateRoomId();
     rooms.set(roomId, {
       id: roomId,
       creator: socket.id,
-      users: new Map([[socket.id, { id: socket.id, nick, color }]]), // Сохраняем цвет
+      users: new Map([[socket.id, { id: socket.id, nick, color }]]),
       createdAt: Date.now()
     });
     socket.join(roomId);
@@ -75,7 +75,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Проверка на уникальность ника (если это не переподключение создателя)
     if (!isCreator) {
       const nickExists = Array.from(room.users.values()).some(u => u.nick.toLowerCase() === nick.toLowerCase());
       if (nickExists) {
@@ -92,7 +91,6 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Обновляем или добавляем пользователя
     room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
     socket.join(roomId);
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
@@ -100,7 +98,8 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', (data) => {
     if (!socket.authenticated) return;
-    const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime } = data;
+    // ДОБАВЛЕНО: replyTo
+    const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime, replyTo } = data;
     const room = rooms.get(roomId);
     if (!room) return;
 
@@ -110,14 +109,15 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('message', {
       userId: socket.id,
       nick: user.nick,
-      color: user.color, // Передаем цвет отправителя
-      isHost: room.creator === socket.id, // Передаем, является ли отправитель создателем
+      color: user.color,
+      isHost: room.creator === socket.id,
       encryptedMessage,
       type,
       duration,
       fileName,
       fileSize,
       fileMime,
+      replyTo, // ДОБАВЛЕНО: Пересылаем цитату
       timestamp: Date.now()
     });
   });
