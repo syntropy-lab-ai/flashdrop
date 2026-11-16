@@ -21,8 +21,8 @@ app.use(cors());
 app.use(express.static(join(__dirname, 'public')));
 
 const rooms = new Map();
-const disconnectTimers = new Map(); // Таймеры для закрытия комнаты
-const presenceTimers = new Map();   // Таймеры для статуса "В сети"
+const disconnectTimers = new Map();
+const presenceTimers = new Map();
 const validTokens = new Set();
 const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123';
 
@@ -70,6 +70,7 @@ io.on('connection', (socket) => {
     });
     socket.join(roomId);
     socket.emit('roomCreated', { roomId });
+    socket.emit('onlineUsers', [nick]); // Отправляем создателя самому себе
   });
 
   socket.on('joinRoom', (data) => {
@@ -105,6 +106,11 @@ io.on('connection', (socket) => {
 
     room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
     socket.join(roomId);
+    
+    // Отправляем новому пользователю список всех, кто сейчас в комнате
+    const onlineUsers = Array.from(room.users.values()).map(u => u.nick);
+    socket.emit('onlineUsers', onlineUsers);
+
     socket.broadcast.to(roomId).emit('userStatusChange', { nick, online: true });
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
   });
@@ -165,7 +171,6 @@ io.on('connection', (socket) => {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
 
-        // Статус "В сети" (задержка 5 секунд)
         const presenceKey = roomId + '_' + user.nick;
         if (presenceTimers.has(presenceKey)) clearTimeout(presenceTimers.get(presenceKey));
         
@@ -176,7 +181,6 @@ io.on('connection', (socket) => {
           presenceTimers.delete(presenceKey);
         }, 5000));
 
-        // Логика закрытия комнаты
         if (room.creator === socket.id) {
           const timer = setTimeout(() => {
             if (rooms.has(roomId)) {
@@ -186,7 +190,6 @@ io.on('connection', (socket) => {
           }, 30000);
           disconnectTimers.set(roomId, timer);
         } else {
-          // Счетчик участников обновляем сразу, даже если он еще "онлайн"
           io.to(roomId).emit('userLeft', { nick: user.nick, userCount: room.users.size });
         }
         break;
