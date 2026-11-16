@@ -99,7 +99,6 @@ io.on('connection', (socket) => {
     room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
     socket.join(roomId);
     
-    // Отправляем всем список тех, кто сейчас онлайн
     const onlineIds = Array.from(room.users.keys());
     io.to(roomId).emit('onlineUsers', onlineIds);
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
@@ -107,7 +106,8 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', (data) => {
     if (!socket.authenticated) return;
-    const { roomId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime, replyTo, expiresIn } = data;
+    // ДОБАВЛЕНО: msgId
+    const { roomId, msgId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime, replyTo, expiresIn } = data;
     const room = rooms.get(roomId);
     if (!room) return;
 
@@ -115,6 +115,7 @@ io.on('connection', (socket) => {
     if (!user) return;
 
     io.to(roomId).emit('message', {
+      msgId,
       userId: socket.id,
       nick: user.nick,
       color: user.color,
@@ -129,6 +130,13 @@ io.on('connection', (socket) => {
       expiresIn,
       timestamp: Date.now()
     });
+  });
+
+  // ДОБАВЛЕНО: Обработка удаления сообщения
+  socket.on('deleteMessage', (data) => {
+    if (!socket.authenticated) return;
+    const { roomId, msgId } = data;
+    io.to(roomId).emit('messageDeleted', { msgId });
   });
 
   socket.on('typing', (data) => {
@@ -160,7 +168,6 @@ io.on('connection', (socket) => {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
         
-        // Отправляем обновленный список онлайна
         const onlineIds = Array.from(room.users.keys());
         io.to(roomId).emit('onlineUsers', onlineIds);
 
