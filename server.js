@@ -22,7 +22,6 @@ app.use(express.static(join(__dirname, 'public')));
 
 const rooms = new Map();
 const disconnectTimers = new Map();
-const presenceTimers = new Map();
 const validTokens = new Set();
 const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123';
 
@@ -70,7 +69,6 @@ io.on('connection', (socket) => {
     });
     socket.join(roomId);
     socket.emit('roomCreated', { roomId });
-    socket.emit('onlineUsers', [nick]); // Отправляем создателя самому себе
   });
 
   socket.on('joinRoom', (data) => {
@@ -83,7 +81,7 @@ io.on('connection', (socket) => {
     }
 
     if (!isCreator) {
-      const nickExists = Array.from(room.users.values()).some(u => u.nick.toLowerCase() === nick.toLowerCase());
+      const nickExists = Array.from(room.users.values()).some(u => u.nick.toLowerCase() === nick.toLowerCase() && u.id !== socket.id);
       if (nickExists) {
         socket.emit('error', { message: 'Этот никнейм уже занят в комнате' });
         return;
@@ -98,20 +96,12 @@ io.on('connection', (socket) => {
       }
     }
 
-    const presenceKey = roomId + '_' + nick;
-    if (presenceTimers.has(presenceKey)) {
-      clearTimeout(presenceTimers.get(presenceKey));
-      presenceTimers.delete(presenceKey);
-    }
-
     room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
     socket.join(roomId);
     
-    // Отправляем новому пользователю список всех, кто сейчас в комнате
-    const onlineUsers = Array.from(room.users.values()).map(u => u.nick);
-    socket.emit('onlineUsers', onlineUsers);
-
-    socket.broadcast.to(roomId).emit('userStatusChange', { nick, online: true });
+    // Отправляем всем список тех, кто сейчас онлайн
+    const onlineIds = Array.from(room.users.keys());
+    io.to(roomId).emit('onlineUsers', onlineIds);
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
   });
 
@@ -158,7 +148,6 @@ io.on('connection', (socket) => {
     if (!room || room.creator !== socket.id) return;
     io.to(roomId).emit('roomEnded');
     rooms.delete(roomId);
-    
     if (disconnectTimers.has(roomId)) {
       clearTimeout(disconnectTimers.get(roomId));
       disconnectTimers.delete(roomId);
@@ -170,16 +159,10 @@ io.on('connection', (socket) => {
       if (room.users.has(socket.id)) {
         const user = room.users.get(socket.id);
         room.users.delete(socket.id);
-
-        const presenceKey = roomId + '_' + user.nick;
-        if (presenceTimers.has(presenceKey)) clearTimeout(presenceTimers.get(presenceKey));
         
-        presenceTimers.set(presenceKey, setTimeout(() => {
-          if (rooms.has(roomId)) {
-            io.to(roomId).emit('userStatusChange', { nick: user.nick, online: false });
-          }
-          presenceTimers.delete(presenceKey);
-        }, 5000));
+        // Отправляем обновленный список онлайна
+        const onlineIds = Array.from(room.users.keys());
+        io.to(roomId).emit('onlineUsers', onlineIds);
 
         if (room.creator === socket.id) {
           const timer = setTimeout(() => {
