@@ -67,8 +67,6 @@
   .color-option:hover { transform: scale(1.15); }
   .color-option.selected { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
   .history-placeholder { font-style: italic; color: var(--muted); font-size: 12px; }
-  
-  /* Стили для цитат (Reply) */
   .reply-quote { background: rgba(0, 0, 0, 0.3); border-left: 3px solid; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
   .reply-quote .nick { font-weight: 600; font-size: 10px; margin-bottom: 2px; }
   .reply-quote .text { color: #a0a5b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -159,7 +157,6 @@
       <div id="chat-area-1" class="flex-1 space-y-3 mb-4 overflow-y-auto pr-1 min-h-[250px]"></div>
       
       <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex flex-col shadow-2xl">
-        <!-- Плашка ответа -->
         <div id="reply-banner-1" class="hidden mb-2 mx-1 p-2 bg-black/40 border border-[var(--card-border)] rounded-xl flex items-center gap-3">
           <div class="flex-1 min-w-0">
             <div id="reply-nick-1" class="text-[10px] font-bold"></div>
@@ -237,7 +234,6 @@
       </div>
       
       <div class="sticky bottom-2 sm:bottom-4 bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--card-border)] rounded-2xl p-1.5 sm:p-2 flex flex-col shadow-2xl">
-        <!-- Плашка ответа -->
         <div id="reply-banner-2" class="hidden mb-2 mx-1 p-2 bg-black/40 border border-[var(--card-border)] rounded-xl flex items-center gap-3">
           <div class="flex-1 min-w-0">
             <div id="reply-nick-2" class="text-[10px] font-bold"></div>
@@ -366,7 +362,7 @@
   let mediaRecorder = null, audioChunks = [], isRecording = false, recordingTimer = null, recordingStartTime = 0;
   let myColor = '#00d4ff';
   let chatHistory = [];
-  let currentReplyTo = null; // Переменная для хранения цитаты
+  let currentReplyTo = null;
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -414,7 +410,6 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  // --- ЛОГИКА ОТВЕТОВ (REPLY) ---
   function setReplyTo(msg) {
     currentReplyTo = msg;
     const suffix = isCreator ? '1' : '2';
@@ -444,26 +439,22 @@
   });
 
   function attachReplyListeners(el, msgData) {
-    // ПК: Двойной клик
     el.addEventListener('dblclick', (e) => {
       e.preventDefault();
-      if (window.getSelection().toString().length > 0) return; // Игнорируем, если юзер выделяет текст
+      if (window.getSelection().toString().length > 0) return;
       setReplyTo(msgData);
     });
 
-    // Мобилка: Долгое нажатие (Long Press)
     let touchTimer;
     el.addEventListener('touchstart', (e) => {
       touchTimer = setTimeout(() => {
         setReplyTo(msgData);
-        // Легкая вибрация (если поддерживается)
         if (navigator.vibrate) navigator.vibrate(50);
-      }, 500); // 500мс
+      }, 500);
     }, { passive: true });
     el.addEventListener('touchend', () => clearTimeout(touchTimer));
     el.addEventListener('touchmove', () => clearTimeout(touchTimer));
   }
-  // ------------------------------
 
   function saveHistory() {
     try {
@@ -641,7 +632,6 @@
     if (!text) return;
     try {
       const enc = await encryptMessage(encryptionKey, text);
-      // ОТПРАВЛЯЕМ replyTo
       socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'text', replyTo: currentReplyTo });
       input.value = ''; socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
       playNotificationSound('outgoing');
@@ -657,7 +647,6 @@
     try {
       const arrayBuffer = await file.arrayBuffer();
       const enc = await encryptBinary(encryptionKey, new Uint8Array(arrayBuffer));
-      // ОТПРАВЛЯЕМ replyTo
       socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'file', fileName: file.name, fileSize: file.size, fileMime: file.type, replyTo: currentReplyTo });
       playNotificationSound('outgoing'); showToast('Файл отправлен');
       cancelReply();
@@ -681,7 +670,6 @@
         const buf = await blob.arrayBuffer();
         try {
           const enc = await encryptBinary(encryptionKey, new Uint8Array(buf));
-          // ОТПРАВЛЯЕМ replyTo
           socket.emit('sendMessage', { roomId: currentRoomId, encryptedMessage: enc, type: 'voice', duration: Math.round(dur * 10) / 10, fileMime: mime || 'audio/webm', replyTo: currentReplyTo });
           playNotificationSound('outgoing'); showToast(`Голосовое отправлено (${formatDuration(dur)})`);
           cancelReply();
@@ -728,6 +716,12 @@
     });
 
     socket.on('connect_error', () => showToast('Ошибка подключения к серверу', 'error'));
+
+    // ИСПРАВЛЕНИЕ: Обработка просроченного токена (без ошибки)
+    socket.on('tokenExpired', () => {
+      localStorage.removeItem('flashdrop_token');
+      showScreen('lock');
+    });
 
     socket.on('authSuccess', (data) => {
       if (data.token) localStorage.setItem('flashdrop_token', data.token);
