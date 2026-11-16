@@ -338,7 +338,7 @@
   let socket = null, currentRoomId = null, encryptionKey = null, myNick = '', isCreator = false, typingTimeout = null;
   let mediaRecorder = null, audioChunks = [], isRecording = false, recordingTimer = null, recordingStartTime = 0;
   let myColor = '#00d4ff';
-  let chatHistory = []; // Массив для сохранения истории
+  let chatHistory = [];
 
   const COLORS = ['#00d4ff', '#ff4757', '#2ed573', '#ffa502', '#a29bfe', '#fd79a8', '#e1b12c', '#00cec9'];
 
@@ -386,10 +386,9 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  // --- СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ ИСТОРИИ ---
   function saveHistory() {
     try {
-      if (chatHistory.length > 100) chatHistory = chatHistory.slice(-100); // Лимит 100 сообщений
+      if (chatHistory.length > 100) chatHistory = chatHistory.slice(-100);
       sessionStorage.setItem('flashdrop_chat_history', JSON.stringify(chatHistory));
     } catch (e) {
       console.warn('Не удалось сохранить историю (лимит памяти)');
@@ -511,7 +510,6 @@
     area.appendChild(msg); area.scrollTop = area.scrollHeight;
   }
 
-  // --- ОЧИСТКА СЕССИИ ---
   function clearSession() {
     sessionStorage.removeItem('flashdrop_active_room');
     sessionStorage.removeItem('flashdrop_chat_history');
@@ -613,7 +611,6 @@
       if (data.token) localStorage.setItem('flashdrop_token', data.token);
       initColorPickers();
       
-      // ПРОВЕРКА НА НАЛИЧИЕ СОХРАНЕННОЙ СЕССИИ (F5)
       const savedRoom = sessionStorage.getItem('flashdrop_active_room');
       if (savedRoom) {
         try {
@@ -627,10 +624,17 @@
           importKey(window.encryptionKeyBase64).then(k => {
             encryptionKey = k;
             socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator, color: myColor });
+            
             document.getElementById('chat-room-id').textContent = currentRoomId;
             document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
             document.getElementById('end-btn-text').textContent = isCreator ? 'Завершить' : 'Выйти';
             
+            // ВОТ ТУТ ИСПРАВЛЕНИЕ: Возвращаем ссылку, если это создатель
+            if (isCreator) {
+               document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
+               document.getElementById('room-id-display-1').textContent = currentRoomId;
+            }
+
             restoreHistory();
             
             showScreen(isCreator ? 'room-created' : 'chat');
@@ -643,7 +647,6 @@
         } catch (e) { console.error(e); }
       }
 
-      // Если сохраненной сессии нет, проверяем URL
       const p = new URLSearchParams(window.location.hash.substring(1));
       if (p.get('room') && p.get('key')) {
         currentRoomId = p.get('room'); window.encryptionKeyBase64 = p.get('key');
@@ -671,7 +674,6 @@
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
       
-      // СОХРАНЯЕМ СЕССИЮ
       sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
         roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor
       }));
@@ -754,7 +756,6 @@
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
     document.getElementById('end-btn-text').textContent = 'Выйти';
     
-    // СОХРАНЯЕМ СЕССИЮ
     sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
       roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor
     }));
