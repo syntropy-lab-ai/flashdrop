@@ -192,3 +192,92 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
 });
+
+// ============================================================
+// FLASHDROP CALLS: WebRTC-сигнализация (Mesh)
+// Аддитивный блок — код выше НЕ изменяется.
+// ============================================================
+const TURN_USERNAME = process.env.TURN_USERNAME || '';
+const TURN_PASSWORD = process.env.TURN_PASSWORD || '';
+
+function buildIceServers() {
+  const iceServers = [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+  ];
+  if (TURN_USERNAME && TURN_PASSWORD) {
+    iceServers.push({
+      urls: [
+        'turn:global.relay.metered.ca:80',
+        'turn:global.relay.metered.ca:80?transport=tcp',
+        'turn:global.relay.metered.ca:443',
+        'turns:global.relay.metered.ca:443?transport=tcp'
+      ],
+      username: TURN_USERNAME,
+      credential: TURN_PASSWORD
+    });
+  }
+  return iceServers;
+}
+
+function callPeerList(room) {
+  return Array.from(room.callPeers.values()).map(p => ({ peerId: p.peerId, nick: p.nick, color: p.color }));
+}
+
+function callCleanup(socket) {
+  const roomId = socket.data.callRoom;
+  const peerId = socket.data.peerId;
+  if (!roomId || !peerId) return;
+  const room = rooms.get(roomId);
+  if (room && room.callPeers) {
+    room.callPeers.delete(peerId);
+    socket.leave('call:' + roomId);
+    io.to('call:' + roomId).emit('call:peer-left', { peerId });
+    io.to(roomId).emit('call:presence', { count: room.callPeers.size, peers: callPeerList(room) });
+    if (room.callPeers.size === 0) delete room.callPeers;
+    console.log(`[call] peer ${peerId} left call in ${roomId}`);
+  }
+  socket.data.peerId = null;
+  socket.data.callRoom = null;
+}
+
+// Второй слушатель connection: тот же socket, старая логика не тронута
+io.on('connection', (socket) => {
+  socket.on('call:get-ice', ({ roomId } = {}) => {
+    if (!socket.authenticated) return;
+    const room = rooms.get(roomId);
+    if (!room || !room.users.has(socket.id)) return; // только участникам комнаты
+    socket.emit('call:ice-config', { iceServers: buildIceServers() });
+  });
+
+  socket.on('call:join', ({ roomId, peerId }) => {
+    if (!socket.authenticated) return;
+    const room = rooms.get(roomId);
+    if (!room || !peerId) return;
+    const me = room.users.get(socket.id); // ник и цвет — только с сервера
+    if (!me) return;
+    if (!room.callPeers) room.callPeers = new Map();
+    if (room.callPeers.has(peerId)) return;
+
+    room.callPeers.set(peerId, { peerId, socketId: socket.id, nick: me.nick, color: me.color });
+    socket.data.peerId = peerId;
+    socket.data.callRoom = roomId;
+    socket.join('call:' + roomId);
+
+    socket.emit('call:joined', { peers: callPeerList(room).filter(p => p.peerId !== peerId) });
+    socket.to('call:' + roomId).emit('call:peer-joined', { peerId, nick: me.nick, color: me.color });
+    io.to(roomId).emit('call:presence', { count: room.callPeers.size, peers: callPeerList(room) });
+    console.log(`[call] ${me.nick} joined call in ${roomId} (${room.callPeers.size} in call)`);
+  });
+
+  socket.on('call:signal', ({ roomId, to, payload }) => {
+    if (!socket.authenticated) return;
+    const room = rooms.get(roomId);
+    if (!room || !room.callPeers || !socket.data.peerId) return;
+    const target = room.callPeers.get(to);
+    if (!target) return;
+    io.to(target.socketId).emit('call:signal', { from: socket.data.peerId, payload });
+  });
+
+  socket.on('call:leave', () => callCleanup(socket));
+  socket.on('disconnect', () => callCleanup(socket));
+});
