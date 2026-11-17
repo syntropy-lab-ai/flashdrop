@@ -1204,6 +1204,199 @@
   };
 
   window.onload = () => { initSocket(); };
+  
+    // ===== Мостик для модуля звонков =====
+  window.__fd = {
+    get socket() { return socket; },
+    get roomId() { return currentRoomId; },
+    get nick()   { return myNick; },
+    get inRoom() { return !!(this.roomId && this.socket); }
+  };
+</script>
+  <!-- ================= FLASHDROP CALLS ================= -->
+<style>
+  #call-start-btn, #call-join-banner, #call-bar { z-index: 400; }
+  .call-chip { display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:999px; padding:4px 10px; font-size:12px; color:#e5e7eb; }
+  .call-chip .dot { width:8px; height:8px; border-radius:50%; background:#6b7280; }
+  .call-chip.connected .dot { background:#2ed573; }
+  @keyframes call-ring { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+  .ringing { animation: call-ring 1.2s ease-in-out infinite; display:inline-block; }
+</style>
+
+<button id="call-start-btn" class="hidden fixed bottom-24 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-cyan-400 text-white text-xl shadow-xl flex items-center justify-center" title="Начать звонок">📞</button>
+
+<div id="call-join-banner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-[#0f111a]/95 border border-cyan-400/40 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl backdrop-blur-xl">
+  <span class="ringing">📞</span>
+  <span id="call-join-text" class="text-sm text-gray-200">Идёт звонок</span>
+  <button id="call-join-btn" class="bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold px-4 py-2 rounded-xl">Присоединиться</button>
+</div>
+
+<div id="call-bar" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 bg-[#0f111a]/95 border border-[#1e2235] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl backdrop-blur-xl max-w-[95vw]">
+  <span class="text-lg">📞</span>
+  <span id="call-timer" class="mono text-sm text-cyan-300">00:00</span>
+  <div id="call-peers" class="flex gap-1.5 flex-wrap"></div>
+  <button id="call-mute-btn" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-base" title="Микрофон">🎤</button>
+  <button id="call-leave-btn" class="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center text-white text-sm font-bold" title="Покинуть звонок">✕</button>
+</div>
+<div id="call-audios" class="hidden"></div>
+
+<script type="module">
+(() => {
+  const MY_PEER_ID = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  const $ = id => document.getElementById(id);
+  const sock = () => (window.__fd ? window.__fd.socket : null);
+
+  let iceServers = [];
+  let localStream = null;
+  let inCall = false;
+  let muted = false;
+  let callTs = 0;
+  let timerInt = null;
+  let attached = null;
+  let lastCount = 0;
+  const peers = new Map();
+
+  const fmtTime = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+
+  function refreshButtons() {
+    const inRoom = window.__fd && window.__fd.inRoom;
+    $('call-start-btn').classList.toggle('hidden', !inRoom || inCall || lastCount > 0);
+    $('call-join-banner').classList.toggle('hidden', !inRoom || inCall || lastCount === 0);
+    $('call-bar').classList.toggle('hidden', !inCall);
+  }
+  function addChip(id, nick, color) {
+    const chip = document.createElement('div');
+    chip.className = 'call-chip'; chip.id = 'chip-' + id;
+    const myNick = window.__fd ? window.__fd.nick : null;
+    chip.innerHTML = `<span class="dot" style="${color ? `background:${color}` : ''}"></span><span>${nick === myNick ? 'Вы' : nick}</span>`;
+    $('call-peers').appendChild(chip);
+    return chip;
+  }
+  const removeChip = id => { const c = $('chip-' + id); if (c) c.remove(); };
+  function emitSignal(to, payload) {
+    const s = sock(); if (!s) return;
+    s.emit('call:signal', { roomId: window.__fd.roomId, to, payload });
+  }
+
+  function createPc(id, nick, color) {
+    if (peers.has(id)) return peers.get(id);
+    const pc = new RTCPeerConnection({ iceServers });
+    const entry = { pc, nick, chip: addChip(id, nick, color), pending: [], audio: null };
+    peers.set(id, entry);
+    pc.onicecandidate = e => { if (e.candidate) emitSignal(id, { type: 'candidate', candidate: e.candidate }); };
+    pc.ontrack = e => {
+      const audio = document.createElement('audio');
+      audio.autoplay = true; audio.playsInline = true;
+      audio.srcObject = e.streams[0];
+      $('call-audios').appendChild(audio);
+      audio.play().catch(() => {});
+      entry.audio = audio;
+    };
+    pc.onconnectionstatechange = () => {
+      const st = pc.connectionState;
+      if (st === 'connected') entry.chip.classList.add('connected');
+      if (st === 'failed' || st === 'closed') removePeer(id);
+    };
+    if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    return entry;
+  }
+  async function sendOffer(id) {
+    const e = peers.get(id); if (!e) return;
+    const offer = await e.pc.createOffer();
+    await e.pc.setLocalDescription(offer);
+    emitSignal(id, { type: 'offer', sdp: offer });
+  }
+  async function handleSignal(from, payload) {
+    const e = createPc(from, payload.nick || 'Участник', payload.color);
+    try {
+      if (payload.type === 'offer') {
+        await e.pc.setRemoteDescription(payload.sdp);
+        e.pending.forEach(c => e.pc.addIceCandidate(c).catch(()=>{})); e.pending = [];
+        const answer = await e.pc.createAnswer();
+        await e.pc.setLocalDescription(answer);
+        emitSignal(from, { type: 'answer', sdp: answer });
+      } else if (payload.type === 'answer') {
+        await e.pc.setRemoteDescription(payload.sdp);
+        e.pending.forEach(c => e.pc.addIceCandidate(c).catch(()=>{})); e.pending = [];
+      } else if (payload.type === 'candidate') {
+        if (e.pc.remoteDescription) e.pc.addIceCandidate(payload.candidate).catch(()=>{});
+        else e.pending.push(payload.candidate);
+      }
+    } catch (err) { console.error('[call] signal error', err); }
+  }
+  function removePeer(id) {
+    const e = peers.get(id); if (!e) return;
+    try { e.pc.close(); } catch {}
+    if (e.audio) e.audio.remove();
+    removeChip(id);
+    peers.delete(id);
+  }
+
+  function requestIce(roomId) {
+    return new Promise(res => {
+      const s = sock(); if (!s) return res();
+      if (iceServers.length) return res();
+      const t = setTimeout(res, 1500);
+      s.once('call:ice-config', d => { iceServers = d.iceServers || []; clearTimeout(t); res(); });
+      s.emit('call:get-ice', { roomId });
+    });
+  }
+
+  async function joinCall() {
+    if (inCall || !window.__fd || !window.__fd.inRoom) return;
+    if (!window.__fd.nick) { console.error('[call] Мостик не нашёл nick. Проверь правку 2.'); return; }
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch (err) { alert('Нет доступа к микрофону'); return; }
+
+    await requestIce(window.__fd.roomId);
+    inCall = true; muted = false; callTs = Date.now();
+    $('call-mute-btn').textContent = '🎤';
+    refreshButtons();
+    timerInt = setInterval(() => { $('call-timer').textContent = fmtTime(Math.floor((Date.now() - callTs)/1000)); }, 1000);
+    sock().emit('call:join', { roomId: window.__fd.roomId, peerId: MY_PEER_ID });
+  }
+
+  function leaveCall() {
+    if (!inCall) return;
+    inCall = false;
+    clearInterval(timerInt);
+    sock()?.emit('call:leave', { roomId: window.__fd.roomId, peerId: MY_PEER_ID });
+    peers.forEach(e => { try { e.pc.close(); } catch {} });
+    peers.clear();
+    $('call-peers').innerHTML = '';
+    $('call-audios').innerHTML = '';
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+    refreshButtons();
+  }
+
+  function attach(s) {
+    s.on('call:ice-config', d => { iceServers = d.iceServers || []; });
+    s.on('call:presence', d => { lastCount = d.count || 0; if (!inCall) { $('call-join-text').textContent = `Идёт звонок · ${lastCount}`; refreshButtons(); } });
+    s.on('call:joined', d => (d.peers || []).forEach(p => { createPc(p.peerId, p.nick, p.color); if (MY_PEER_ID < p.peerId) sendOffer(p.peerId); }));
+    s.on('call:peer-joined', d => { createPc(d.peerId, d.nick, d.color); if (MY_PEER_ID < d.peerId) sendOffer(d.peerId); });
+    s.on('call:signal', d => handleSignal(d.from, d.payload));
+    s.on('call:peer-left', d => removePeer(d.peerId));
+  }
+
+  setInterval(() => {
+    const s = sock();
+    if (s && attached !== s) { attached = s; attach(s); }
+    if (!inCall) refreshButtons();
+  }, 500);
+
+  $('call-start-btn').addEventListener('click', joinCall);
+  $('call-join-btn').addEventListener('click', joinCall);
+  $('call-leave-btn').addEventListener('click', leaveCall);
+  $('call-mute-btn').addEventListener('click', () => {
+    if (!localStream) return;
+    muted = !muted;
+    localStream.getAudioTracks().forEach(t => { t.enabled = !muted; });
+    $('call-mute-btn').textContent = muted ? '🔇' : '🎤';
+  });
+  window.addEventListener('beforeunload', () => { if (inCall) sock()?.emit('call:leave', { roomId: window.__fd.roomId, peerId: MY_PEER_ID }); });
+})();
 </script>
 </body>
 </html>
