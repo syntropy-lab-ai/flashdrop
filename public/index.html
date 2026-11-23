@@ -124,6 +124,24 @@
   .menu-btn.active { background: rgba(255, 71, 87, 0.2); border-color: rgba(255, 71, 87, 0.5); color: #ff4757; }
   @keyframes call-ring { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
   .ringing { animation: call-ring 1.2s ease-in-out infinite; display:inline-block; }
+
+  /* Стили для свернутой панели звонка */
+  #call-bar { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+  #call-bar.collapsed { 
+    padding: 8px 12px; 
+    min-width: 0; 
+    width: auto; 
+    border-radius: 20px; 
+  }
+  #call-bar.collapsed .participants-grid { display: none; }
+  #call-bar.collapsed .call-header { 
+    border-bottom: none; 
+    padding-bottom: 0; 
+    margin-bottom: 0; 
+    gap: 12px;
+  }
+  #call-bar.collapsed #call-mute-btn, 
+  #call-bar.collapsed #call-leave-btn { display: none; }
 </style>
 </head>
 <body>
@@ -532,7 +550,6 @@
   document.getElementById('menu-delete-all').onclick = () => {
     if (activeMsgData) {
       socket.emit('deleteMessage', { roomId: currentRoomId, msgId: activeMsgData.msgId });
-      // Удаление произойдет, когда сервер пришлет событие messageDeleted
       hideContextMenu();
     }
   };
@@ -1042,7 +1059,7 @@
     });
 
     socket.on('roomJoined', (d) => {
-      isCreator = d.isCreator; // ВАЖНО: присваиваем в первую очередь
+      isCreator = d.isCreator;
       
       const btn = document.getElementById('join-room-btn');
       if (btn) { 
@@ -1277,6 +1294,8 @@
     <div class="flex items-center gap-2">
       <button id="call-mute-btn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm" title="Мой микрофон">🎤</button>
       <button id="call-leave-btn" class="w-8 h-8 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center text-white text-sm font-bold" title="Покинуть звонок">✕</button>
+      <!-- Новая кнопка сворачивания -->
+      <button id="call-collapse-btn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm" title="Свернуть">🔽</button>
     </div>
   </div>
   
@@ -1520,6 +1539,13 @@
     await requestIce(window.__fd.roomId);
     inCall = true; muted = false; callTs = Date.now();
     $('call-mute-btn').textContent = '🎤';
+    
+    // Сбрасываем свернутое состояние при новом входе
+    const callBarEl = $('call-bar');
+    const collapseBtn = $('call-collapse-btn');
+    if (callBarEl) callBarEl.classList.remove('collapsed');
+    if (collapseBtn) { collapseBtn.textContent = '🔽'; collapseBtn.title = 'Свернуть'; }
+
     refreshButtons();
     timerInt = setInterval(() => { $('call-timer').textContent = fmtTime(Math.floor((Date.now() - callTs)/1000)); }, 1000);
     sock().emit('call:join', { roomId: window.__fd.roomId, peerId: MY_PEER_ID });
@@ -1529,6 +1555,13 @@
     if (!inCall) return;
     inCall = false;
     clearInterval(timerInt);
+    
+    // Сбрасываем свернутое состояние при выходе
+    const callBarEl = $('call-bar');
+    const collapseBtn = $('call-collapse-btn');
+    if (callBarEl) callBarEl.classList.remove('collapsed');
+    if (collapseBtn) { collapseBtn.textContent = '🔽'; collapseBtn.title = 'Свернуть'; }
+
     sock()?.emit('call:leave', { roomId: window.__fd.roomId, peerId: MY_PEER_ID });
     peers.forEach(e => { try { e.pc.close(); } catch {} });
     peers.clear();
@@ -1563,6 +1596,25 @@
     localStream.getAudioTracks().forEach(t => { t.enabled = !muted; });
     $('call-mute-btn').textContent = muted ? '🔇' : '🎤';
   });
+
+  // Логика сворачивания панели
+  const callBarEl = $('call-bar');
+  const collapseBtn = $('call-collapse-btn');
+
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', () => {
+      callBarEl.classList.toggle('collapsed');
+      const isCollapsed = callBarEl.classList.contains('collapsed');
+      
+      // Меняем иконку
+      collapseBtn.textContent = isCollapsed ? '🔼' : '🔽';
+      collapseBtn.title = isCollapsed ? 'Развернуть' : 'Свернуть';
+      
+      // Если свернули, закрываем меню настроек участника, чтобы не висело
+      if (isCollapsed) closeUserMenu();
+    });
+  }
+
   window.addEventListener('beforeunload', () => { if (inCall) sock()?.emit('call:leave', { roomId: window.__fd.roomId, peerId: MY_PEER_ID }); });
 })();
 </script>
