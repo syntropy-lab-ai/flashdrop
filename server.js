@@ -74,7 +74,7 @@ io.on('connection', (socket) => {
       creator: socket.id,
       hostToken: hostToken,
       users: new Map([[socket.id, { id: socket.id, nick, color }]]),
-      messages: new Map(), // Для проверки прав на удаление
+      messages: new Map(),
       createdAt: Date.now()
     });
     socket.join(roomId);
@@ -111,6 +111,9 @@ io.on('connection', (socket) => {
     room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
     socket.join(roomId);
     
+    // ДОБАВЛЕНО: Подтверждение успешного входа
+    socket.emit('roomJoined', { isCreator: isRealCreator, hostToken: isRealCreator ? room.hostToken : null });
+
     const onlineIds = Array.from(room.users.keys());
     io.to(roomId).emit('onlineUsers', onlineIds);
     io.to(roomId).emit('userJoined', { nick, userCount: room.users.size });
@@ -125,11 +128,9 @@ io.on('connection', (socket) => {
     const user = room.users.get(socket.id);
     if (!user) return;
 
-    // Сохраняем отправителя для защиты удаления
     if (!room.messages) room.messages = new Map();
     room.messages.set(msgId, { senderId: socket.id });
     
-    // Очистка старых сообщений из памяти
     if (room.messages.size > 1000) {
       const firstKey = room.messages.keys().next().value;
       room.messages.delete(firstKey);
@@ -149,7 +150,6 @@ io.on('connection', (socket) => {
     if (!room || !room.messages) return;
 
     const msgInfo = room.messages.get(msgId);
-    // Удалять может только автор
     if (!msgInfo || msgInfo.senderId !== socket.id) return;
 
     room.messages.delete(msgId);
@@ -286,7 +286,6 @@ io.on('connection', (socket) => {
 
   socket.on('call:signal', ({ roomId, to, payload }) => {
     if (!socket.authenticated) return;
-    // Защита: отправлять сигналы может только тот, кто в звонке этой комнаты
     if (socket.data.callRoom !== roomId) return;
     
     const room = rooms.get(roomId);
