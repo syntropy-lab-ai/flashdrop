@@ -135,14 +135,13 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #0f111a; /* Непрозрачный фон */
+    background: #0f111a;
   }
   #call-bar.collapsed .call-header,
   #call-bar.collapsed .participants-grid,
   #call-bar.collapsed #user-audio-menu { 
     display: none !important; 
   }
-  /* Показываем маленькую кнопку только в свернутом виде */
   #call-bar:not(.collapsed) #call-open-btn { display: none; }
   #call-bar.collapsed #call-open-btn { display: flex; }
 
@@ -152,7 +151,6 @@
     align-items: center; justify-content: center; font-size: 24px;
     cursor: pointer; position: relative;
   }
-  /* Красная пульсирующая точка, что звонок активен */
   #call-open-btn::after {
     content: ''; position: absolute; top: 8px; right: 8px;
     width: 12px; height: 12px; background: #ff4757; border-radius: 50%;
@@ -1035,7 +1033,7 @@
             encryptionKey = k;
             isRestoringSession = true;
             
-            socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, hostToken: room.hostToken, color: myColor });
+            socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, hostToken: room.hostToken, userToken: room.userToken, color: myColor });
             
           }).catch(() => {
             isRestoringSession = false;
@@ -1101,7 +1099,8 @@
       sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
         roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, 
         isCreator: isCreator, color: myColor,
-        hostToken: d.hostToken || existingSession.hostToken 
+        hostToken: d.hostToken || existingSession.hostToken,
+        userToken: d.userToken || existingSession.userToken
       }));
 
       if (isRestoringSession) {
@@ -1133,7 +1132,7 @@
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
       
       sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
-        roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor, hostToken: d.hostToken
+        roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor, hostToken: d.hostToken, userToken: d.userToken
       }));
 
       showScreen('room-created'); showToast('Комната успешно создана');
@@ -1216,6 +1215,7 @@
     btn.disabled = true;
     btn.innerHTML = 'Вход...';
     
+    // Отправляем БЕЗ userToken, так как это новый вход
     socket.emit('joinRoom', { roomId: currentRoomId, nick, color: myColor });
     
     setTimeout(() => {
