@@ -103,7 +103,7 @@
 
   /* Стили для панели звонка */
   #call-start-btn, #call-join-banner, #call-bar { z-index: 400; }
-  #call-bar { flex-direction: column; align-items: stretch; padding: 12px; gap: 12px; min-width: 280px; }
+  #call-bar { flex-direction: column; align-items: stretch; padding: 12px; gap: 12px; min-width: 280px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
   .call-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 4px; }
   .participants-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 320px; margin: 0 auto; }
   .participant-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; position: relative; }
@@ -125,23 +125,44 @@
   @keyframes call-ring { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
   .ringing { animation: call-ring 1.2s ease-in-out infinite; display:inline-block; }
 
-  /* Стили для свернутой панели звонка */
-  #call-bar { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-  #call-bar.collapsed { 
-    padding: 8px 12px; 
-    min-width: 0; 
-    width: auto; 
-    border-radius: 20px; 
+  /* Стили для круглой свернутой панели */
+  #call-bar.collapsed {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #0f111a; /* Непрозрачный фон */
   }
-  #call-bar.collapsed .participants-grid { display: none; }
-  #call-bar.collapsed .call-header { 
-    border-bottom: none; 
-    padding-bottom: 0; 
-    margin-bottom: 0; 
-    gap: 12px;
+  #call-bar.collapsed .call-header,
+  #call-bar.collapsed .participants-grid,
+  #call-bar.collapsed #user-audio-menu { 
+    display: none !important; 
   }
-  #call-bar.collapsed #call-mute-btn, 
-  #call-bar.collapsed #call-leave-btn { display: none; }
+  /* Показываем маленькую кнопку только в свернутом виде */
+  #call-bar:not(.collapsed) #call-open-btn { display: none; }
+  #call-bar.collapsed #call-open-btn { display: flex; }
+
+  #call-open-btn {
+    width: 100%; height: 100%; border-radius: 50%;
+    background: transparent; color: white; border: none;
+    align-items: center; justify-content: center; font-size: 24px;
+    cursor: pointer; position: relative;
+  }
+  /* Красная пульсирующая точка, что звонок активен */
+  #call-open-btn::after {
+    content: ''; position: absolute; top: 8px; right: 8px;
+    width: 12px; height: 12px; background: #ff4757; border-radius: 50%;
+    animation: pulse-dot 1.5s infinite;
+  }
+  @keyframes pulse-dot {
+    0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+  }
 </style>
 </head>
 <body>
@@ -1286,6 +1307,10 @@
 </div>
 
 <div id="call-bar" class="hidden fixed bottom-24 right-4 bg-[#0f111a]/95 border border-[#1e2235] rounded-2xl shadow-2xl backdrop-blur-xl max-w-[calc(100vw-32px)] sm:w-[340px] z-50">
+  
+  <!-- Кнопка, которая видна только когда панель свернута -->
+  <button id="call-open-btn" title="Развернуть звонок">📞</button>
+
   <div class="call-header">
     <div class="flex items-center gap-2">
       <span class="text-lg">📞</span>
@@ -1542,9 +1567,7 @@
     
     // Сбрасываем свернутое состояние при новом входе
     const callBarEl = $('call-bar');
-    const collapseBtn = $('call-collapse-btn');
     if (callBarEl) callBarEl.classList.remove('collapsed');
-    if (collapseBtn) { collapseBtn.textContent = '🔽'; collapseBtn.title = 'Свернуть'; }
 
     refreshButtons();
     timerInt = setInterval(() => { $('call-timer').textContent = fmtTime(Math.floor((Date.now() - callTs)/1000)); }, 1000);
@@ -1558,9 +1581,7 @@
     
     // Сбрасываем свернутое состояние при выходе
     const callBarEl = $('call-bar');
-    const collapseBtn = $('call-collapse-btn');
     if (callBarEl) callBarEl.classList.remove('collapsed');
-    if (collapseBtn) { collapseBtn.textContent = '🔽'; collapseBtn.title = 'Свернуть'; }
 
     sock()?.emit('call:leave', { roomId: window.__fd.roomId, peerId: MY_PEER_ID });
     peers.forEach(e => { try { e.pc.close(); } catch {} });
@@ -1600,18 +1621,18 @@
   // Логика сворачивания панели
   const callBarEl = $('call-bar');
   const collapseBtn = $('call-collapse-btn');
+  const openBtn = $('call-open-btn');
 
   if (collapseBtn) {
     collapseBtn.addEventListener('click', () => {
-      callBarEl.classList.toggle('collapsed');
-      const isCollapsed = callBarEl.classList.contains('collapsed');
-      
-      // Меняем иконку
-      collapseBtn.textContent = isCollapsed ? '🔼' : '🔽';
-      collapseBtn.title = isCollapsed ? 'Развернуть' : 'Свернуть';
-      
-      // Если свернули, закрываем меню настроек участника, чтобы не висело
-      if (isCollapsed) closeUserMenu();
+      callBarEl.classList.add('collapsed');
+      closeUserMenu();
+    });
+  }
+
+  if (openBtn) {
+    openBtn.addEventListener('click', () => {
+      callBarEl.classList.remove('collapsed');
     });
   }
 
