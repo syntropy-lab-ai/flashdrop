@@ -532,7 +532,7 @@
   document.getElementById('menu-delete-all').onclick = () => {
     if (activeMsgData) {
       socket.emit('deleteMessage', { roomId: currentRoomId, msgId: activeMsgData.msgId });
-      deleteMessageLocally(activeMsgData.msgId);
+      // Удаление произойдет, когда сервер пришлет событие messageDeleted
       hideContextMenu();
     }
   };
@@ -874,6 +874,12 @@
       if (isEphemeralMode) payload.expiresIn = 30000;
       
       socket.emit('sendMessage', payload);
+      
+      if (!socket.connected) {
+        showToast('Нет соединения. Сообщение не отправлено.', 'error');
+        return;
+      }
+      
       input.value = ''; socket.emit('stopTyping', { roomId: currentRoomId, nick: myNick });
       playNotificationSound('outgoing');
       cancelReply();
@@ -990,22 +996,9 @@
           importKey(window.encryptionKeyBase64).then(k => {
             encryptionKey = k;
             isRestoringSession = true;
-            // Передаем hostToken, а не isCreator
+            
             socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, hostToken: room.hostToken, color: myColor });
             
-            document.getElementById('chat-room-id').textContent = currentRoomId;
-            document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
-            document.getElementById('end-btn-text').textContent = isCreator ? 'Завершить' : 'Выйти';
-            
-            if (isCreator) {
-               document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
-               document.getElementById('room-id-display-1').textContent = currentRoomId;
-            }
-
-            restoreHistory();
-            
-            showScreen(isCreator ? 'room-created' : 'chat');
-            showToast('Сессия восстановлена');
           }).catch(() => {
             isRestoringSession = false;
             clearSession();
@@ -1031,21 +1024,55 @@
     socket.on('authError', (d) => { showToast(d.message, 'error'); localStorage.removeItem('flashdrop_token'); showScreen('lock'); });
 
     socket.on('error', d => {
-      if (isRestoringSession && d.message.includes('не найдена')) {
+      showToast(d.message, 'error');
+      
+      const btn = document.getElementById('join-room-btn');
+      if (btn) btn.disabled = false;
+
+      if (d.message.includes('не найдена')) {
         isRestoringSession = false;
         clearSession();
         window.history.replaceState(null, '', window.location.pathname);
         showScreen('landing');
-        return;
-      }
-
-      isRestoringSession = false;
-      showToast(d.message, 'error');
-      if (d.message.includes('не найдена')) {
+      } else if (d.message.includes('никнейм уже занят') && isRestoringSession) {
+        isRestoringSession = false;
         clearSession();
-        window.history.replaceState(null, '', window.location.pathname);
         showScreen('landing');
       }
+    });
+
+    socket.on('roomJoined', (d) => {
+      isCreator = d.isCreator; // ВАЖНО: присваиваем в первую очередь
+      
+      const btn = document.getElementById('join-room-btn');
+      if (btn) { 
+        btn.disabled = false; 
+        btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg> Войти в комнату'; 
+      }
+
+      document.getElementById('chat-room-id').textContent = currentRoomId;
+      document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
+      document.getElementById('end-btn-text').textContent = isCreator ? 'Завершить' : 'Выйти';
+      
+      if (isCreator) {
+        document.getElementById('room-link').textContent = `${window.location.origin}/#room=${currentRoomId}&key=${window.encryptionKeyBase64}`;
+        document.getElementById('room-id-display-1').textContent = currentRoomId;
+      }
+
+      const existingSession = JSON.parse(sessionStorage.getItem('flashdrop_active_room') || '{}');
+      sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
+        roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, 
+        isCreator: isCreator, color: myColor,
+        hostToken: d.hostToken || existingSession.hostToken 
+      }));
+
+      if (isRestoringSession) {
+        restoreHistory();
+        isRestoringSession = false;
+        showToast('Сессия восстановлена');
+      }
+
+      showScreen(isCreator ? 'room-created' : 'chat');
     });
 
     socket.on('onlineUsers', (userIds) => {
@@ -1067,7 +1094,6 @@
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
       
-      // Сохраняем hostToken
       sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
         roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor, hostToken: d.hostToken
       }));
@@ -1145,18 +1171,24 @@
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = false;
-    // Передаем без hostToken, так как обычный юзер
+    
+    const btn = document.getElementById('join-room-btn');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = 'Вход...';
+    
     socket.emit('joinRoom', { roomId: currentRoomId, nick, color: myColor });
     
-    document.getElementById('chat-room-id').textContent = currentRoomId;
-    document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
-    document.getElementById('end-btn-text').textContent = 'Выйти';
-    
-    sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
-      roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator: false, color: myColor
-    }));
-
-    showScreen('chat');
+    setTimeout(() => {
+      if (btn.disabled) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (document.getElementById('screen-join').classList.contains('active')) {
+          showToast('Сервер не отвечает. Попробуйте еще раз.', 'error');
+        }
+      }
+    }, 5000);
   };
 
   document.getElementById('send-btn-1').onclick = sendMessage;
@@ -1402,11 +1434,17 @@
           btn.id = 'unmute-all-btn';
           btn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg mt-2 animate-pulse';
           btn.textContent = '🔊 Нажмите для включения звука';
-          btn.onclick = () => {
-            document.querySelectorAll('#call-audios audio').forEach(a => {
-              a.play().catch(e => console.log(e));
-            });
-            btn.remove();
+          btn.onclick = async () => {
+            let success = false;
+            const audios = document.querySelectorAll('#call-audios audio');
+            for (let a of audios) {
+              try { await a.play(); success = true; } catch(e) {}
+            }
+            if (success) {
+              btn.remove();
+            } else {
+              showToast('Браузер все еще блокирует звук. Попробуйте коснуться экрана.', 'error');
+            }
           };
           bar.appendChild(btn);
         }
@@ -1418,7 +1456,7 @@
     
     pc.onconnectionstatechange = () => {
       const st = pc.connectionState;
-      if (st === 'connected') entry.chip?.classList?.add('connected');
+      if (st === 'connected') document.getElementById('av-' + id)?.classList.add('speaking');
       if (st === 'failed' || st === 'closed') removePeer(id);
     };
     
