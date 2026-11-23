@@ -68,22 +68,23 @@ io.on('connection', (socket) => {
     const { nick, color } = data;
     const roomId = generateRoomId();
     const hostToken = crypto.randomBytes(16).toString('hex');
+    const userToken = crypto.randomBytes(16).toString('hex');
 
     rooms.set(roomId, {
       id: roomId,
       creator: socket.id,
       hostToken: hostToken,
-      users: new Map([[socket.id, { id: socket.id, nick, color }]]),
+      users: new Map([[socket.id, { id: socket.id, nick, color, userToken }]]),
       messages: new Map(),
       createdAt: Date.now()
     });
     socket.join(roomId);
-    socket.emit('roomCreated', { roomId, hostToken });
+    socket.emit('roomCreated', { roomId, hostToken, userToken });
   });
 
   socket.on('joinRoom', (data) => {
     if (!socket.authenticated) return;
-    const { roomId, nick, hostToken, color } = data;
+    const { roomId, nick, hostToken, userToken, color } = data;
     const room = rooms.get(roomId);
     if (!room) {
       socket.emit('error', { message: 'Комната не найдена или уже закрыта' });
@@ -91,9 +92,27 @@ io.on('connection', (socket) => {
     }
 
     const isRealCreator = hostToken && room.hostToken === hostToken;
+    
+    let existingUserEntry = null;
+    let oldSocketId = null;
 
-    if (!isRealCreator) {
-      const nickExists = Array.from(room.users.values()).some(u => u.nick.toLowerCase() === nick.toLowerCase() && u.id !== socket.id);
+    // Ищем пользователя по userToken (для восстановления сессии после F5)
+    if (userToken) {
+      for (const [sid, u] of room.users.entries()) {
+        if (u.userToken === userToken) {
+          existingUserEntry = u;
+          oldSocketId = sid;
+          break;
+        }
+      }
+    }
+
+    if (existingUserEntry) {
+      // Переносим сессию: удаляем старый "мертвый" сокет, чтобы освободить ник
+      room.users.delete(oldSocketId);
+    } else {
+      // Если это новый пользователь, проверяем, не занят ли ник
+      const nickExists = Array.from(room.users.values()).some(u => u.nick.toLowerCase() === nick.toLowerCase());
       if (nickExists) {
         socket.emit('error', { message: 'Этот никнейм уже занят в комнате' });
         return;
@@ -108,11 +127,17 @@ io.on('connection', (socket) => {
       }
     }
 
-    room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff' });
+    const newUserToken = userToken || crypto.randomBytes(16).toString('hex');
+    // Добавляем новый сокет с сохраненными данными
+    room.users.set(socket.id, { id: socket.id, nick, color: color || '#00d4ff', userToken: newUserToken });
     socket.join(roomId);
     
-    // ДОБАВЛЕНО: Подтверждение успешного входа
-    socket.emit('roomJoined', { isCreator: isRealCreator, hostToken: isRealCreator ? room.hostToken : null });
+    // Отправляем подтверждение и токен
+    socket.emit('roomJoined', { 
+      isCreator: isRealCreator, 
+      hostToken: isRealCreator ? room.hostToken : null,
+      userToken: newUserToken
+    });
 
     const onlineIds = Array.from(room.users.keys());
     io.to(roomId).emit('onlineUsers', onlineIds);
