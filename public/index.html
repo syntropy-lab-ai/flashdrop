@@ -84,7 +84,6 @@
   .status-dot.online { background-color: var(--success); box-shadow: 0 0 5px var(--success); }
   .status-dot.offline { background-color: var(--muted); opacity: 0.5; }
 
-  /* Стили для контекстного меню */
   #context-menu {
     position: fixed; z-index: 9999; display: none; flex-direction: column;
     background: rgba(15, 17, 26, 0.95); backdrop-filter: blur(10px);
@@ -101,6 +100,30 @@
   .context-btn:hover { background: rgba(255,255,255,0.1); }
   .context-btn.danger { color: var(--danger); }
   .context-btn.danger:hover { background: rgba(255, 71, 87, 0.1); }
+
+  /* Стили для панели звонка */
+  #call-start-btn, #call-join-banner, #call-bar { z-index: 400; }
+  #call-bar { flex-direction: column; align-items: stretch; padding: 12px; gap: 12px; min-width: 280px; }
+  .call-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 4px; }
+  .participants-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 320px; margin: 0 auto; }
+  .participant-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; position: relative; }
+  .participant-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: #fff; transition: transform 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid transparent; }
+  .participant-item:hover .participant-avatar { transform: scale(1.1); }
+  .participant-avatar.speaking { border-color: #2ed573; box-shadow: 0 0 15px rgba(46, 213, 115, 0.5); }
+  .participant-avatar.muted-local { opacity: 0.5; }
+  .participant-avatar.muted-local::after { content: '🔇'; position: absolute; top: -5px; right: -5px; font-size: 12px; background: #0f111a; border-radius: 50%; padding: 2px; }
+  .participant-name { font-size: 10px; color: #a0a5b8; max-width: 50px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  
+  #user-audio-menu { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 10px; background: rgba(15, 17, 26, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; width: 200px; display: none; flex-direction: column; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 500; }
+  #user-audio-menu.active { display: flex; }
+  #user-audio-menu .menu-title { font-size: 13px; font-weight: bold; color: #fff; text-align: center; margin-bottom: 4px; }
+  #user-audio-menu input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+  .menu-btn-row { display: flex; gap: 8px; }
+  .menu-btn { flex: 1; padding: 6px; border-radius: 6px; font-size: 12px; text-align: center; cursor: pointer; transition: background 0.2s; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; }
+  .menu-btn:hover { background: rgba(255,255,255,0.15); }
+  .menu-btn.active { background: rgba(255, 71, 87, 0.2); border-color: rgba(255, 71, 87, 0.5); color: #ff4757; }
+  @keyframes call-ring { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+  .ringing { animation: call-ring 1.2s ease-in-out infinite; display:inline-block; }
 </style>
 </head>
 <body>
@@ -124,7 +147,6 @@
 </div>
 
 <div class="content-layer min-h-screen">
-
   <div id="screen-lock" class="screen flex-col items-center justify-center px-4 min-h-screen">
     <div class="w-full max-w-sm animate-slide-up">
       <div class="text-center mb-8">
@@ -453,16 +475,13 @@
   lightbox.addEventListener('click', closeLightbox);
   lightboxClose.addEventListener('click', closeLightbox);
 
-  // --- ЛОГИКА КОНТЕКСТНОГО МЕНЮ ---
   const contextMenu = document.getElementById('context-menu');
-  let activeMsgData = null; // Данные сообщения, на котором открыто меню
+  let activeMsgData = null;
   let activeMsgElement = null;
 
   function showContextMenu(x, y, msgData, el) {
     activeMsgData = msgData;
     activeMsgElement = el;
-    
-    // Показываем/скрываем кнопку "Удалить у всех"
     const deleteAllBtn = document.getElementById('menu-delete-all');
     if (msgData.isSelf) {
       deleteAllBtn.style.display = 'flex';
@@ -470,7 +489,6 @@
       deleteAllBtn.style.display = 'none';
     }
 
-    // Позиционирование
     contextMenu.classList.add('active');
     const menuWidth = contextMenu.offsetWidth;
     const menuHeight = contextMenu.offsetHeight;
@@ -493,7 +511,6 @@
     activeMsgElement = null;
   }
 
-  // Закрываем меню при клике в любом другом месте
   document.addEventListener('click', (e) => {
     if (!contextMenu.contains(e.target)) hideContextMenu();
   });
@@ -521,18 +538,15 @@
   };
 
   function deleteMessageLocally(msgId) {
-    // Удаляем из DOM
     const el = document.getElementById(msgId) || document.querySelector(`[data-msgid="${msgId}"]`);
     if (el) {
       el.classList.add('destroying');
       setTimeout(() => el.remove(), 300);
     }
     
-    // Удаляем из истории
     chatHistory = chatHistory.filter(m => m.msgId !== msgId);
     saveHistory();
   }
-  // ---------------------------------
 
   function initColorPickers() {
     const savedColor = localStorage.getItem('flashdrop_color') || '#00d4ff';
@@ -623,14 +637,12 @@
   });
 
   function attachMessageListeners(el, msgData, isEphemeral = false) {
-    // ПК: Правый клик
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (window.getSelection().toString().length > 0) return; 
       showContextMenu(e.clientX, e.clientY, msgData, el);
     });
 
-    // Мобилка: Долгое нажатие
     let touchTimer;
     el.addEventListener('touchstart', (e) => {
       touchTimer = setTimeout(() => {
@@ -978,7 +990,8 @@
           importKey(window.encryptionKeyBase64).then(k => {
             encryptionKey = k;
             isRestoringSession = true;
-            socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, isCreator, color: myColor });
+            // Передаем hostToken, а не isCreator
+            socket.emit('joinRoom', { roomId: currentRoomId, nick: myNick, hostToken: room.hostToken, color: myColor });
             
             document.getElementById('chat-room-id').textContent = currentRoomId;
             document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
@@ -1044,7 +1057,6 @@
       });
     });
 
-    // Слушаем удаление
     socket.on('messageDeleted', (data) => {
       deleteMessageLocally(data.msgId);
     });
@@ -1055,8 +1067,9 @@
       document.getElementById('room-id-display-1').textContent = currentRoomId;
       window.history.replaceState(null, '', `#room=${currentRoomId}&key=${window.encryptionKeyBase64}`);
       
+      // Сохраняем hostToken
       sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
-        roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor
+        roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor, hostToken: d.hostToken
       }));
 
       showScreen('room-created'); showToast('Комната успешно создана');
@@ -1132,14 +1145,15 @@
     const nick = document.getElementById('join-nick-input').value.trim();
     if (!nick) { showToast('Введите никнейм', 'error'); return; }
     myNick = nick; isCreator = false;
-    socket.emit('joinRoom', { roomId: currentRoomId, nick, isCreator: false, color: myColor });
+    // Передаем без hostToken, так как обычный юзер
+    socket.emit('joinRoom', { roomId: currentRoomId, nick, color: myColor });
     
     document.getElementById('chat-room-id').textContent = currentRoomId;
     document.getElementById('chat-header-info').textContent = `${currentRoomId} · 1 участник`;
     document.getElementById('end-btn-text').textContent = 'Выйти';
     
     sessionStorage.setItem('flashdrop_active_room', JSON.stringify({
-      roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator, color: myColor
+      roomId: currentRoomId, key: window.encryptionKeyBase64, nick: myNick, isCreator: false, color: myColor
     }));
 
     showScreen('chat');
@@ -1205,7 +1219,6 @@
 
   window.onload = () => { initSocket(); };
   
-    // ===== Мостик для модуля звонков =====
   window.__fd = {
     get socket() { return socket; },
     get roomId() { return currentRoomId; },
@@ -1213,16 +1226,8 @@
     get inRoom() { return !!(this.roomId && this.socket); }
   };
 </script>
-  <!-- ================= FLASHDROP CALLS ================= -->
-<style>
-  #call-start-btn, #call-join-banner, #call-bar { z-index: 400; }
-  .call-chip { display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:999px; padding:4px 10px; font-size:12px; color:#e5e7eb; }
-  .call-chip .dot { width:8px; height:8px; border-radius:50%; background:#6b7280; }
-  .call-chip.connected .dot { background:#2ed573; }
-  @keyframes call-ring { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-  .ringing { animation: call-ring 1.2s ease-in-out infinite; display:inline-block; }
-</style>
 
+<!-- ================= FLASHDROP CALLS ================= -->
 <button id="call-start-btn" class="hidden fixed bottom-24 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-cyan-400 text-white text-xl shadow-xl flex items-center justify-center" title="Начать звонок">📞</button>
 
 <div id="call-join-banner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-[#0f111a]/95 border border-cyan-400/40 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl backdrop-blur-xl">
@@ -1231,14 +1236,33 @@
   <button id="call-join-btn" class="bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold px-4 py-2 rounded-xl">Присоединиться</button>
 </div>
 
-<div id="call-bar" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 bg-[#0f111a]/95 border border-[#1e2235] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl backdrop-blur-xl max-w-[95vw]">
-  <span class="text-lg">📞</span>
-  <span id="call-timer" class="mono text-sm text-cyan-300">00:00</span>
-  <div id="call-peers" class="flex gap-1.5 flex-wrap"></div>
-  <button id="call-mute-btn" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-base" title="Микрофон">🎤</button>
-  <button id="call-leave-btn" class="w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center text-white text-sm font-bold" title="Покинуть звонок">✕</button>
+<div id="call-bar" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 bg-[#0f111a]/95 border border-[#1e2235] rounded-2xl shadow-2xl backdrop-blur-xl max-w-[95vw]">
+  <div class="call-header">
+    <div class="flex items-center gap-2">
+      <span class="text-lg">📞</span>
+      <span id="call-timer" class="mono text-sm text-cyan-300">00:00</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="call-mute-btn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm" title="Мой микрофон">🎤</button>
+      <button id="call-leave-btn" class="w-8 h-8 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center text-white text-sm font-bold" title="Покинуть звонок">✕</button>
+    </div>
+  </div>
+  
+  <div class="participants-grid" id="call-participants"></div>
+
+  <div id="user-audio-menu">
+    <div class="menu-title" id="menu-user-name">Участник</div>
+    <div>
+      <label class="text-[10px] text-gray-400 mb-1 block">Громкость</label>
+      <input type="range" id="user-volume-slider" min="0" max="1" step="0.1" value="1">
+    </div>
+    <div class="menu-btn-row">
+      <button id="menu-mute-btn" class="menu-btn">🔇 Заглушить</button>
+    </div>
+    <button id="menu-close-btn" class="menu-btn mt-1" style="background: transparent; border: none; color: #8b92a8;">Закрыть</button>
+  </div>
 </div>
-<div id="call-audios" class="hidden"></div>
+<div id="call-audios" style="position: absolute; width: 0; height: 0; overflow: hidden; display: block;"></div>
 
 <script type="module">
 (() => {
@@ -1255,6 +1279,7 @@
   let attached = null;
   let lastCount = 0;
   const peers = new Map();
+  let currentMenuPeerId = null;
 
   const fmtTime = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
 
@@ -1264,15 +1289,88 @@
     $('call-join-banner').classList.toggle('hidden', !inRoom || inCall || lastCount === 0);
     $('call-bar').classList.toggle('hidden', !inCall);
   }
-  function addChip(id, nick, color) {
-    const chip = document.createElement('div');
-    chip.className = 'call-chip'; chip.id = 'chip-' + id;
+
+  function addParticipantUI(id, nick, color) {
+    const existing = document.getElementById('p-' + id);
+    if (existing) return existing;
+
+    const item = document.createElement('div');
+    item.className = 'participant-item';
+    item.id = 'p-' + id;
+    
     const myNick = window.__fd ? window.__fd.nick : null;
-    chip.innerHTML = `<span class="dot" style="${color ? `background:${color}` : ''}"></span><span>${nick === myNick ? 'Вы' : nick}</span>`;
-    $('call-peers').appendChild(chip);
-    return chip;
+    const displayName = (nick === myNick) ? 'Вы' : nick;
+    const initial = nick ? nick.charAt(0).toUpperCase() : '?';
+    
+    item.onclick = (e) => {
+      e.stopPropagation();
+      openUserMenu(id, nick);
+    };
+
+    item.innerHTML = `
+      <div class="participant-avatar" id="av-${id}" style="background-color: ${color || '#00d4ff'}">${initial}</div>
+      <div class="participant-name">${displayName}</div>
+    `;
+    $('call-participants').appendChild(item);
+    return item;
   }
-  const removeChip = id => { const c = $('chip-' + id); if (c) c.remove(); };
+
+  function openUserMenu(id, nick) {
+    const e = peers.get(id);
+    if (!e) return;
+    currentMenuPeerId = id;
+    
+    $('menu-user-name').textContent = nick;
+    $('user-volume-slider').value = e.volume !== undefined ? e.volume : 1;
+    
+    const muteBtn = $('menu-mute-btn');
+    if (e.localMuted) {
+      muteBtn.textContent = '🔊 Включить';
+      muteBtn.classList.add('active');
+    } else {
+      muteBtn.textContent = '🔇 Заглушить';
+      muteBtn.classList.remove('active');
+    }
+    
+    $('user-audio-menu').classList.add('active');
+  }
+
+  function closeUserMenu() {
+    $('user-audio-menu').classList.remove('active');
+    currentMenuPeerId = null;
+  }
+
+  $('menu-close-btn').onclick = closeUserMenu;
+  $('user-volume-slider').oninput = (e) => {
+    if (!currentMenuPeerId) return;
+    const peer = peers.get(currentMenuPeerId);
+    if (peer && peer.audio) {
+      peer.volume = parseFloat(e.target.value);
+      peer.audio.volume = peer.volume;
+    }
+  };
+  $('menu-mute-btn').onclick = () => {
+    if (!currentMenuPeerId) return;
+    const peer = peers.get(currentMenuPeerId);
+    if (peer && peer.audio) {
+      peer.localMuted = !peer.localMuted;
+      peer.audio.muted = peer.localMuted;
+      
+      const av = document.getElementById('av-' + currentMenuPeerId);
+      if (av) {
+        if (peer.localMuted) av.classList.add('muted-local');
+        else av.classList.remove('muted-local');
+      }
+      openUserMenu(currentMenuPeerId, peer.nick); 
+    }
+  };
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#user-audio-menu') && !e.target.closest('.participant-item')) {
+      closeUserMenu();
+    }
+  });
+
   function emitSignal(to, payload) {
     const s = sock(); if (!s) return;
     s.emit('call:signal', { roomId: window.__fd.roomId, to, payload });
@@ -1281,31 +1379,60 @@
   function createPc(id, nick, color) {
     if (peers.has(id)) return peers.get(id);
     const pc = new RTCPeerConnection({ iceServers });
-    const entry = { pc, nick, chip: addChip(id, nick, color), pending: [], audio: null };
+    
+    addParticipantUI(id, nick, color);
+    
+    const entry = { pc, nick, color, volume: 1.0, localMuted: false, pending: [], audio: null };
     peers.set(id, entry);
+    
     pc.onicecandidate = e => { if (e.candidate) emitSignal(id, { type: 'candidate', candidate: e.candidate }); };
+    
     pc.ontrack = e => {
       const audio = document.createElement('audio');
-      audio.autoplay = true; audio.playsInline = true;
+      audio.autoplay = true; 
+      audio.playsInline = true;
       audio.srcObject = e.streams[0];
       $('call-audios').appendChild(audio);
-      audio.play().catch(() => {});
+      
+      audio.play().catch((err) => {
+        console.warn('Автовоспроизведение заблокировано браузером для', nick);
+        if (!document.getElementById('unmute-all-btn')) {
+          const bar = $('call-bar');
+          const btn = document.createElement('button');
+          btn.id = 'unmute-all-btn';
+          btn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg mt-2 animate-pulse';
+          btn.textContent = '🔊 Нажмите для включения звука';
+          btn.onclick = () => {
+            document.querySelectorAll('#call-audios audio').forEach(a => {
+              a.play().catch(e => console.log(e));
+            });
+            btn.remove();
+          };
+          bar.appendChild(btn);
+        }
+      });
+      
       entry.audio = audio;
+      entry.audio.volume = entry.volume;
     };
+    
     pc.onconnectionstatechange = () => {
       const st = pc.connectionState;
-      if (st === 'connected') entry.chip.classList.add('connected');
+      if (st === 'connected') entry.chip?.classList?.add('connected');
       if (st === 'failed' || st === 'closed') removePeer(id);
     };
+    
     if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     return entry;
   }
+
   async function sendOffer(id) {
     const e = peers.get(id); if (!e) return;
     const offer = await e.pc.createOffer();
     await e.pc.setLocalDescription(offer);
     emitSignal(id, { type: 'offer', sdp: offer });
   }
+
   async function handleSignal(from, payload) {
     const e = createPc(from, payload.nick || 'Участник', payload.color);
     try {
@@ -1324,12 +1451,15 @@
       }
     } catch (err) { console.error('[call] signal error', err); }
   }
+
   function removePeer(id) {
     const e = peers.get(id); if (!e) return;
     try { e.pc.close(); } catch {}
     if (e.audio) e.audio.remove();
-    removeChip(id);
+    const el = document.getElementById('p-' + id);
+    if (el) el.remove();
     peers.delete(id);
+    if (currentMenuPeerId === id) closeUserMenu();
   }
 
   function requestIce(roomId) {
@@ -1344,7 +1474,7 @@
 
   async function joinCall() {
     if (inCall || !window.__fd || !window.__fd.inRoom) return;
-    if (!window.__fd.nick) { console.error('[call] Мостик не нашёл nick. Проверь правку 2.'); return; }
+    if (!window.__fd.nick) { console.error('[call] Мостик не нашёл nick.'); return; }
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch (err) { alert('Нет доступа к микрофону'); return; }
@@ -1364,7 +1494,7 @@
     sock()?.emit('call:leave', { roomId: window.__fd.roomId, peerId: MY_PEER_ID });
     peers.forEach(e => { try { e.pc.close(); } catch {} });
     peers.clear();
-    $('call-peers').innerHTML = '';
+    $('call-participants').innerHTML = '';
     $('call-audios').innerHTML = '';
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     localStream = null;
