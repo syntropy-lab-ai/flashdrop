@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flashdrop-v1';
+const CACHE_NAME = 'flashdrop-v2'; // Обновил версию кэша
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -7,7 +7,6 @@ const ASSETS_TO_CACHE = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap'
 ];
 
-// Установка (кэшируем файлы)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -17,7 +16,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Активация (удаляем старый кэш, если обновили версию)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -36,7 +34,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('/socket.io/')) return;
 
-  // Для HTML страниц всегда пробуем загрузить свежую версию из сети
   if (event.request.mode === 'navigate' || event.request.url.endsWith('/')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
@@ -44,7 +41,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Остальное (картинки, скрипты) берем из кэша, если нет — из сети
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
