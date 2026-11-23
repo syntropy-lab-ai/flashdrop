@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -23,7 +24,12 @@ app.use(express.static(join(__dirname, 'public')));
 const rooms = new Map();
 const disconnectTimers = new Map();
 const validTokens = new Set();
-const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'admin123';
+
+// Безопасный пароль
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || crypto.randomBytes(4).toString('hex');
+if (!process.env.ACCESS_PASSWORD) {
+  console.warn(`ВНИМАНИЕ: Переменная ACCESS_PASSWORD не задана! Сгенерирован случайный пароль: ${ACCESS_PASSWORD}`);
+}
 
 function generateRoomId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -61,26 +67,32 @@ io.on('connection', (socket) => {
     if (!socket.authenticated) return;
     const { nick, color } = data;
     const roomId = generateRoomId();
+    const hostToken = crypto.randomBytes(16).toString('hex');
+
     rooms.set(roomId, {
       id: roomId,
       creator: socket.id,
+      hostToken: hostToken,
       users: new Map([[socket.id, { id: socket.id, nick, color }]]),
+      messages: new Map(), // Для проверки прав на удаление
       createdAt: Date.now()
     });
     socket.join(roomId);
-    socket.emit('roomCreated', { roomId });
+    socket.emit('roomCreated', { roomId, hostToken });
   });
 
   socket.on('joinRoom', (data) => {
     if (!socket.authenticated) return;
-    const { roomId, nick, isCreator, color } = data;
+    const { roomId, nick, hostToken, color } = data;
     const room = rooms.get(roomId);
     if (!room) {
       socket.emit('error', { message: 'Комната не найдена или уже закрыта' });
       return;
     }
 
-    if (!isCreator) {
+    const isRealCreator = hostToken && room.hostToken === hostToken;
+
+    if (!isRealCreator) {
       const nickExists = Array.from(room.users.values()).some(u => u.nick.toLowerCase() === nick.toLowerCase() && u.id !== socket.id);
       if (nickExists) {
         socket.emit('error', { message: 'Этот никнейм уже занят в комнате' });
@@ -88,7 +100,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    if (isCreator) {
+    if (isRealCreator) {
       room.creator = socket.id;
       if (disconnectTimers.has(roomId)) {
         clearTimeout(disconnectTimers.get(roomId));
@@ -106,7 +118,6 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', (data) => {
     if (!socket.authenticated) return;
-    // ДОБАВЛЕНО: msgId
     const { roomId, msgId, encryptedMessage, type = 'text', duration = 0, fileName, fileSize, fileMime, replyTo, expiresIn } = data;
     const room = rooms.get(roomId);
     if (!room) return;
@@ -114,28 +125,34 @@ io.on('connection', (socket) => {
     const user = room.users.get(socket.id);
     if (!user) return;
 
+    // Сохраняем отправителя для защиты удаления
+    if (!room.messages) room.messages = new Map();
+    room.messages.set(msgId, { senderId: socket.id });
+    
+    // Очистка старых сообщений из памяти
+    if (room.messages.size > 1000) {
+      const firstKey = room.messages.keys().next().value;
+      room.messages.delete(firstKey);
+    }
+
     io.to(roomId).emit('message', {
-      msgId,
-      userId: socket.id,
-      nick: user.nick,
-      color: user.color,
-      isHost: room.creator === socket.id,
-      encryptedMessage,
-      type,
-      duration,
-      fileName,
-      fileSize,
-      fileMime,
-      replyTo,
-      expiresIn,
-      timestamp: Date.now()
+      msgId, userId: socket.id, nick: user.nick, color: user.color,
+      isHost: room.creator === socket.id, encryptedMessage, type, duration,
+      fileName, fileSize, fileMime, replyTo, expiresIn, timestamp: Date.now()
     });
   });
 
-  // ДОБАВЛЕНО: Обработка удаления сообщения
   socket.on('deleteMessage', (data) => {
     if (!socket.authenticated) return;
     const { roomId, msgId } = data;
+    const room = rooms.get(roomId);
+    if (!room || !room.messages) return;
+
+    const msgInfo = room.messages.get(msgId);
+    // Удалять может только автор
+    if (!msgInfo || msgInfo.senderId !== socket.id) return;
+
+    room.messages.delete(msgId);
     io.to(roomId).emit('messageDeleted', { msgId });
   });
 
@@ -195,7 +212,6 @@ httpServer.listen(PORT, () => {
 
 // ============================================================
 // FLASHDROP CALLS: WebRTC-сигнализация (Mesh)
-// Аддитивный блок — код выше НЕ изменяется.
 // ============================================================
 const TURN_USERNAME = process.env.TURN_USERNAME || '';
 const TURN_PASSWORD = process.env.TURN_PASSWORD || '';
@@ -240,12 +256,11 @@ function callCleanup(socket) {
   socket.data.callRoom = null;
 }
 
-// Второй слушатель connection: тот же socket, старая логика не тронута
 io.on('connection', (socket) => {
   socket.on('call:get-ice', ({ roomId } = {}) => {
     if (!socket.authenticated) return;
     const room = rooms.get(roomId);
-    if (!room || !room.users.has(socket.id)) return; // только участникам комнаты
+    if (!room || !room.users.has(socket.id)) return;
     socket.emit('call:ice-config', { iceServers: buildIceServers() });
   });
 
@@ -253,7 +268,7 @@ io.on('connection', (socket) => {
     if (!socket.authenticated) return;
     const room = rooms.get(roomId);
     if (!room || !peerId) return;
-    const me = room.users.get(socket.id); // ник и цвет — только с сервера
+    const me = room.users.get(socket.id);
     if (!me) return;
     if (!room.callPeers) room.callPeers = new Map();
     if (room.callPeers.has(peerId)) return;
@@ -271,6 +286,9 @@ io.on('connection', (socket) => {
 
   socket.on('call:signal', ({ roomId, to, payload }) => {
     if (!socket.authenticated) return;
+    // Защита: отправлять сигналы может только тот, кто в звонке этой комнаты
+    if (socket.data.callRoom !== roomId) return;
+    
     const room = rooms.get(roomId);
     if (!room || !room.callPeers || !socket.data.peerId) return;
     const target = room.callPeers.get(to);
